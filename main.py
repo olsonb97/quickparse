@@ -1,4 +1,4 @@
-from tkinter import filedialog, scrolledtext, messagebox, ttk
+from tkinter import filedialog, scrolledtext, messagebox, ttk, PhotoImage
 import tkinter as tk
 import os
 import sys
@@ -271,14 +271,19 @@ class MainWindow(tk.Tk):
     # Get the icon file
     def load_icon(self):
         if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-            self.icon_path = os.path.join(sys._MEIPASS, 'quickparse.ico')
+            resource_path = os.path.join(sys._MEIPASS, 'resources')
         else:
-            self.icon_path = os.path.join(os.getcwd(), 'resources', 'quickparse.ico')
+            resource_path = os.path.join(os.getcwd(), 'resources')
 
+        ico_path = os.path.join(resource_path, 'quickparse.ico')
+        icon_path = os.path.join(resource_path, 'quickparse.png')
+        
         try:
-            self.iconbitmap(self.icon_path)
-        except:
-            pass
+            photo = PhotoImage(file=icon_path)
+            self.iconphoto(True, photo)
+            self.iconbitmap(ico_path)
+        except Exception as e:
+            print(f"Failed to load icon: {e}")
 
     # Allign everything
     def center_window(self, width, height):
