@@ -214,7 +214,7 @@ def main_parse(reference_folder_path, folder_path, window):
         "Verdict": ("FAIL" if (detail_dict["Scanned Folder"].get("Deviations") or scanned_files != num_files_to_scan or errors) else "PASS")
     }
     brief_dict = QuickParser.collapse(brief_dict)
-    detail_string = QuickParser.serialize(detail_dict, 'yaml')
+    detail_string = QuickParser.serialize({"Detailed Report": detail_dict}, 'yaml')
     brief_string = QuickParser.serialize(brief_dict, 'yaml')
     final_string = detail_string + "\n" + ("-"* 100) + "\n\nBrief Report:\n\n" + brief_string + "\n" + ("-"* 100)
 
