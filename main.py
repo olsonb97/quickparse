@@ -3,7 +3,7 @@ import tkinter as tk
 import os
 import sys
 from datetime import datetime
-from parse_utils import QuickParser
+from resources.parse_utils import QuickParser
 
 new_pattern_file = r"""
 # Define devices (name must appear in the log) and variables:
@@ -216,14 +216,14 @@ def main_parse(reference_folder_path, folder_path, window):
     brief_dict = QuickParser.collapse(brief_dict)
     detail_string = QuickParser.serialize(detail_dict, 'yaml')
     brief_string = QuickParser.serialize(brief_dict, 'yaml')
-    final_string = detail_string + "\n" + ("-"* 150) + "\n\nBrief Report:\n\n" + brief_string + "\n" + ("-"* 150)
+    final_string = detail_string + "\n" + ("-"* 100) + "\n\nBrief Report:\n\n" + brief_string + "\n" + ("-"* 100)
 
     # Ensure Progress Bar finishes
     window.update_progressbar(100)
 
     # Display final_string
     print("Finished")
-    print("\n" + "-" * 150 + "\n")
+    print("\n" + "-" * 100 + "\n")
     print(final_string)
 
 # Class to redirect stdout to the text box
@@ -247,6 +247,7 @@ class MainWindow(tk.Tk):
     def __init__(self):
         super().__init__()
         self.setup_window()
+        self.load_icon()
         self.configure_ui()
         self.create_widgets()
 
@@ -259,23 +260,35 @@ class MainWindow(tk.Tk):
     # Set the GUI elements
     def configure_ui(self):
         self.title("QuickParser")
-        self.configure(background="#315987")
+        self.configure(background="#2e2b2b")
         self.center_window(1200, 650)
         self.fonts = {
-            'button': ('Arial Rounded MT Bold', 8),
-            'label': ('Arial Rounded MT Bold', 9),
+            'button': ('Nirmala UI', 9),
+            'label': ('Nirmala UI', 8, 'bold'),
             'text': ('Consolas', 10, 'bold')
         }
 
+    # Get the icon file
+    def load_icon(self):
+        if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+            self.icon_path = os.path.join(sys._MEIPASS, 'quickparse.ico')
+        else:
+            self.icon_path = os.path.join(os.getcwd(), 'resources', 'quickparse.ico')
+
+        try:
+            self.iconbitmap(self.icon_path)
+        except:
+            pass
+
     # Allign everything
     def center_window(self, width, height):
-        screen_width = self.winfo_screenwidth()
-        screen_height = self.winfo_screenheight()
-        x = (screen_width - width) // 2
-        y = (screen_height - height) // 2
+        self.screen_width = self.winfo_screenwidth()
+        self.screen_height = self.winfo_screenheight()
+        x = (self.screen_width - width) // 2
+        y = (self.screen_height - height) // 2
         self.geometry(f'{width}x{height}+{x}+{y}')
         self.minsize(900, 500)
-        self.maxsize(screen_width, screen_height)
+        self.maxsize(self.screen_width, self.screen_height)
         self.grid_rowconfigure(2, weight=1)
         self.grid_columnconfigure(1, weight=1)
 
@@ -290,13 +303,13 @@ class MainWindow(tk.Tk):
         self.choose_reference_button = self.create_button("Choose Reference Folder", lambda: self.folder_action("Choose Reference Folder", self.reference_folder_label), 0, 0)
         self.parse_button = self.create_button("Parse", self.parse_action, 0, 2)
         self.settings_button = self.create_button("Settings", self.open_settings_window, 0, 3)
-        self.choose_parse_button = self.create_button("Choose Parse Folder",lambda: self.folder_action("Choose Parsing Folder", self.parse_folder_label), 1, 0)
+        self.choose_parse_button = self.create_button("Choose Target Folder",lambda: self.folder_action("Choose Parsing Folder", self.parse_folder_label), 1, 0)
         self.save_button = self.create_button("Save", self.save_action, 1, 2)
         self.clear_button = self.create_button("Clear", self.clear_action, 1, 3)
 
     def create_button(self, text, command, row, col):
         button = tk.Button(self, text=text, command=command, bg="white", fg="black", font=self.fonts['button'])
-        button.grid(row=row, column=col, padx=5, pady=5)
+        button.grid(row=row, column=col, padx=6, pady=6)
         return button
 
     def create_labels(self):
@@ -304,7 +317,7 @@ class MainWindow(tk.Tk):
         self.parse_folder_label = self.create_label("No folder selected", 1, 1)
 
     def create_label(self, text, row, col):
-        label = tk.Label(self, text=text, bg='#315987', fg='white', font=self.fonts['label'])
+        label = tk.Label(self, text=text, bg='#2e2b2b', fg='white', font=self.fonts['label'])
         label.grid(row=row, column=col, padx=5, pady=5)
         return label
 
@@ -418,7 +431,7 @@ class MainWindow(tk.Tk):
     # Generate a new pattern file
     def generate_pattern_file(self, path):
         okcancel = messagebox.askokcancel(title="Confirm", message=
-                                            "Generating a new file is not recommended. It will have barebones patterns.")
+                                            "Generating a new file is not recommended. Add to an existing one if possible. One folder may only contain one pattern file.")
         if okcancel:
             save_path = open_dialog(parent=self, dialog_type="save", initial_dir=path, initial_name="pattern_file.yaml", filetypes=[("YAML", "*.yaml")], default_ext=".yaml")
             if save_path:
@@ -438,11 +451,15 @@ class MainWindow(tk.Tk):
 
     # Set up the settings window
     def configure_settings_window(self, window):
-        window.geometry("900x100")
+        width = 800
+        height = 100
+        x = (self.screen_width - width) // 2
+        y = (self.screen_height - height) // 2
+        window.geometry(f'{width}x{height}+{x}+{y}')
         window.minsize(600, 100)
         window.maxsize(1400, 100)
-        window.configure(bg="#315987")
-        window.button_frame = tk.Frame(window, bg="#2c478f")
+        window.configure(bg="#2e2b2b")
+        window.button_frame = tk.Frame(window, bg="#2e2b2b")
         window.button_frame.grid(row=2, column=0, columnspan=2, pady=5)
         try:
             window.iconbitmap(self.icon_path)
@@ -452,7 +469,7 @@ class MainWindow(tk.Tk):
     # Create the settings window widgets
     def populate_settings_widgets(self, window):
         # Label for displaying the selected default reference folder
-        lbl_reference_path = tk.Label(window, text=self.default_reference_path, bg="#315987", fg="white", font=self.fonts['label'])
+        lbl_reference_path = tk.Label(window, text=self.default_reference_path, bg="#2e2b2b", fg="white", font=self.fonts['label'])
         lbl_reference_path.grid(row=0, column=1, padx=10, pady=10, sticky="w")
 
         # Button for choosing the default reference folder
@@ -474,25 +491,40 @@ class MainWindow(tk.Tk):
 
     def show_help(self, window):
         help_window = tk.Toplevel(window)
+        help_window.withdraw()
         help_window.iconbitmap(self.icon_path)
         help_window.title("Help")
         help_window.resizable(False, False)
-        help_text = f"""
-This app manages a local config file storing the default reference folder path,
-which should contain reference log files and one pattern file. A new file can 
-be generated in Settings. If no config file exists, the app creates one.
+        
+        # Set the help text
+        help_text = """
+        This app manages a local config file storing the default reference folder path,
+        which should contain reference log files and one pattern file. A new file can 
+        be generated in Settings. If no config file exists, the app creates one.
 
-Save data path: {self.config_path}
--------------------------------------------------------------------------------
-Caution: Only alter this path to delete it.
+        Save data path: {config_path}
+        -------------------------------------------------------------------------------
+        Caution: Only alter this path to delete it.
+        """.format(config_path=self.config_path)
 
-"""
         help_label = tk.Label(help_window, text=help_text, wraplength=600, justify="left")
-        help_label.pack(padx=10, pady=10)
+        help_label.pack(padx=5, pady=5)
+
+        # Center the window on the screen
+        help_window.update_idletasks()
+        screen_width = help_window.winfo_screenwidth()
+        screen_height = help_window.winfo_screenheight()
+        size = tuple(int(_) for _ in help_window.geometry().split('+')[0].split('x'))
+        x = (screen_width / 2) - (size[0] / 2)
+        y = (screen_height / 2) - (size[1] / 2)
+        help_window.geometry("+%d+%d" % (x, y))
+
+        help_window.deiconify()
+
 
     # Template for settings button creation
     def create_settings_button(self, frame, text, command):
-        button = tk.Button(frame, text=text, command=command, border=3, bg="white", fg="black", font=self.fonts['button'])
+        button = tk.Button(frame, text=text, command=command, bg="white", fg="black", font=self.fonts['button'])
         button.pack(side="left", padx=10)
 
     def reset_action(self, window):
