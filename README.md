@@ -32,5 +32,10 @@ C9300:
     MAC Address: 'MAC Address\s+:\s+(\S+)'
 ```
 
+### Extensibility
+- **Format Flexibility**: Default pattern files are YAML for readability and ease of use, but JSON format is also supported for those who prefer it.
+- **Modular Parsing**: The QuickParser class is designed to function independently, allowing it to be imported and utilized in other Python projects.
+- **Expandable Patterns**: New regex patterns can be easily added to the YAML or JSON files, making the tool adaptable.
+
 ## License
 Licensed under GNU General Public License version 3 (GPLv3), ensuring free use and modification.
