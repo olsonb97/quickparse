@@ -208,7 +208,8 @@ def main_parse(reference_folder_path, folder_path, window):
         "Folder (Scanned)": folder_path,
         "Found Devices": list(found_devices),
         "Total Errors": len(errors),
-        "Total Deviations": len(QuickParser.leafify(detail_dict["Scanned Folder"].get("Deviations", {}))),
+        "Total File Deviations": len(QuickParser.leafify(detail_dict["Scanned Folder"].get("Deviations", {}))),
+        "Total File Matches": len(QuickParser.leafify(detail_dict["Scanned Folder"].get("Matches", {}))),
         "Total Files Scanned": scanned_files,
         "Total Files Found": num_files_to_scan,
         "Verdict": ("FAIL" if (detail_dict["Scanned Folder"].get("Deviations") or scanned_files != num_files_to_scan or errors) else "PASS")
@@ -247,9 +248,9 @@ class MainWindow(tk.Tk):
     def __init__(self):
         super().__init__()
         self.setup_window()
-        self.load_icon()
         self.configure_ui()
         self.create_widgets()
+        self.load_icon()
 
     # Initialize the configuration settings
     def setup_window(self):
@@ -271,16 +272,13 @@ class MainWindow(tk.Tk):
     # Get the icon file
     def load_icon(self):
         if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-            resource_path = os.path.join(sys._MEIPASS, 'resources')
+            resource_path = os.path.join(sys._MEIPASS)
         else:
             resource_path = os.path.join(os.getcwd(), 'resources')
 
         ico_path = os.path.join(resource_path, 'quickparse.ico')
-        icon_path = os.path.join(resource_path, 'quickparse.png')
         
         try:
-            photo = PhotoImage(file=icon_path)
-            self.iconphoto(True, photo)
             self.iconbitmap(ico_path)
         except Exception as e:
             print(f"Failed to load icon: {e}")
