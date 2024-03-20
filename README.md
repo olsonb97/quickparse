@@ -1,4 +1,4 @@
-# Project Title
+# Quickparse
 
 ## Overview
 This lightweight tool parses log files against a reference to detect deviations. It utilizes simple, one-level deep YAML configurations for regex patterns, making it efficient and easy to customize. The tool outputs a detailed report, categorizing results as "PASS" or "FAIL".
