@@ -260,7 +260,7 @@ class MainWindow(tk.Tk):
 
     # Set the GUI elements
     def configure_ui(self):
-        self.title("QuickParser")
+        self.title("QuickParse")
         self.configure(background="#2e2b2b")
         self.center_window(1200, 650)
         self.fonts = {
@@ -383,7 +383,7 @@ class MainWindow(tk.Tk):
 
     # Find the config folder
     def get_config_path(self):
-        app_name = "QuickParser"
+        app_name = "QuickParse"
         operating_system = os.name
         platform = sys.platform
         if operating_system == 'nt':  # Windows
