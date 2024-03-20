@@ -10,7 +10,7 @@ This lightweight tool parses log files against a reference to detect deviations.
 
 ### Quick Start
 - **Setup**: Clone the repo and ensure the reference folder has log files and a YAML pattern file.
-- **Run**: Execute the application and follow prompts for paths to reference and target folders.
+- **Run**: Execute the application, select the target folder, and click Parse.
 
 ### Requirements
 - **Reference Folder**:
