@@ -13,7 +13,10 @@ This lightweight tool parses log files against a reference to detect deviations.
 - **Run**: Execute the application and follow prompts for paths to reference and target folders.
 
 ### Requirements
-- **Reference Folder**: Must contain a unique reference file for each device model and a single YAML pattern file for regex patterns.
+- **Reference Folder**:
+    - One YAML pattern file.
+    - At least one log file.
+    - Device names in logs must match YAML keys.
 
 ### YAML Patterns
 Define device variables with minimal regex patterns (Sequences parse in hierarchical order):
