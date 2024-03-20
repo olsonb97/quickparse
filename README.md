@@ -16,16 +16,18 @@ This lightweight tool parses log files against a reference to detect deviations.
 - **Reference Folder**: Must contain a unique reference file for each device model and a single YAML pattern file for regex patterns.
 
 ### YAML Patterns
-Define device variables with minimal regex patterns:
+Define device variables with minimal regex patterns (Sequences parse in hierarchical order):
 
 ```yaml
 C9200L:
-  Version: 'Cisco IOS XE Software, Version (.*)'
-  MAC Address: 'MAC Address\s+:\s+(\S+)'
+    Version:
+    - 'Cisco IOS XE Software, Version (.*)'
+    - 'Cisco IOS XE Software Version (\S+)'
+    MAC Address: 'MAC Address\s+:\s+(\S+)'
 C9300:
-  Version: 'Cisco IOS XE Software, Version (.*)'
-  MAC Address: 'MAC Address\s+:\s+(\S+)'
+    Version: 'Cisco IOS XE Software, Version (.*)'
+    MAC Address: 'MAC Address\s+:\s+(\S+)'
 ```
 
 ## License
-- Licensed under GNU General Public License version 3 (GPLv3), ensuring free use and modification.
+Licensed under GNU General Public License version 3 (GPLv3), ensuring free use and modification.
