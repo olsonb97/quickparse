@@ -25,7 +25,7 @@ C9200L:
 C9300:
   Version: 'Cisco IOS XE Software, Version (.*)'
   MAC Address: 'MAC Address\s+:\s+(\S+)'
-...
+```
 
 ## License
 - Licensed under GNU General Public License version 3 (GPLv3), ensuring free use and modification.
