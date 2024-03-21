@@ -159,41 +159,39 @@ def main_parse(reference_folder_path, folder_path, window):
             if val == "NOT FOUND":
                 errors.append(f"Failed to parse reference file: {reference_file_name} variable: ({key})")
 
-        # Add parsed dict to the detailed dict
-        detail_dict["Reference Folder"].update({reference_file_name: parsed_reference_dict})
+        # Update detailed dict
+        ref_already_exists = detail_dict["Reference Folder"].get(device_type)
+        if not ref_already_exists:
+            detail_dict["Reference Folder"][device_type] = {reference_file_name: parsed_reference_dict}
+        else: # Check if duplicate files exist
+            dupe_file = list(ref_already_exists.keys())[0] # Get dupe file name
+            print(f"Duplicate reference files for the same device found:\n{reference_file}\n{dupe_file}")
+            return
+        detail_dict["Scanned Folder"]["Matches"][device_type] = {}
+        detail_dict["Scanned Folder"]["Deviations"][device_type] = {}
 
         # Find files that have same device as the reference file
-        for filepath in filepaths:
+        for filepath in filepaths.copy(): # Copy so that we can simultaneously iterate and remove elements
             base_file = os.path.basename(filepath)
             with open(filepath, 'r') as file:
                 file_string = file.read()
             if device_type in file_string:
-                # Device is found, so remove it from the list
+                # Device is found, so remove it from the "Device Not Found" list
                 if filepath in files_without_devices:
                     files_without_devices.remove(filepath)
                 found_devices.add(device_type)
                 parser.log('debug', f'Parsing File: {base_file}')
                 parsed_file_dict = parser.parse(file_string)
                 matches, mismatches = QuickParser.compare(parsed_reference_dict, parsed_file_dict) # Compare the two
-                detail_dict["Scanned Folder"]["Matches"].update({base_file: matches})
-                detail_dict["Scanned Folder"]["Deviations"].update({base_file: mismatches})
+                detail_dict["Scanned Folder"]["Matches"][device_type].update({base_file: matches})
+                detail_dict["Scanned Folder"]["Deviations"][device_type].update({base_file: mismatches})
+                filepaths.remove(filepath) # Remove from original list to shorten future operations
                 scanned_files += 1
 
                 # Update Progress Bar
                 total_completed_steps += 1
                 progress = total_completed_steps / total_loading_steps * 100
                 window.update_progressbar(progress)
-
-    # Cancel if nothing parses in the folder
-    if not QuickParser.leafify(detail_dict["Scanned Folder"]):
-        print("Failed to parse any of the files in the scanned folder.")
-        return
-    
-    # Check that the folder was scanned
-    detail_dict = QuickParser.collapse(detail_dict)
-    if not detail_dict.get("Scanned Folder"):
-        print("Nothing in the scanned folder was parsed.")
-        return
     
     # Add devices not found to the errors list
     if files_without_devices:
@@ -201,23 +199,23 @@ def main_parse(reference_folder_path, folder_path, window):
             errors.append(f"Device Not Found: {os.path.basename(file)}")
 
     # Build the final dictionaries and strings
+    detail_dict = QuickParser.collapse(detail_dict)
     brief_dict = {
-        "Completion Date": datetime.now().strftime('%I:%M %p - %B %d, %Y').lstrip("0"),
+        "Completion Date": datetime.now().strftime(r'%I:%M %p - %B %d, %Y').lstrip("0"),
         "Errors": errors,
         "Folder (Reference)": reference_folder_path,
         "Folder (Scanned)": folder_path,
         "Found Devices": list(found_devices),
         "Total Errors": len(errors),
-        "Total File Deviations": len(QuickParser.leafify(detail_dict["Scanned Folder"].get("Deviations", {}))),
-        "Total File Matches": len(QuickParser.leafify(detail_dict["Scanned Folder"].get("Matches", {}))),
+        "Total Deviations": len(QuickParser.leafify(detail_dict.get("Scanned Folder", {}).get("Deviations", {}))),
         "Total Files Scanned": scanned_files,
         "Total Files Found": num_files_to_scan,
-        "Verdict": ("FAIL" if (detail_dict["Scanned Folder"].get("Deviations") or scanned_files != num_files_to_scan or errors) else "PASS")
+        "Verdict": ("FAIL" if (detail_dict.get("Scanned Folder", {}).get("Deviations") or errors or (scanned_files != num_files_to_scan)) else "PASS")
     }
     brief_dict = QuickParser.collapse(brief_dict)
-    detail_string = QuickParser.serialize({"Detailed Report": detail_dict}, 'yaml')
+    detail_string = QuickParser.serialize(detail_dict, 'yaml')
     brief_string = QuickParser.serialize(brief_dict, 'yaml')
-    final_string = detail_string + "\n" + ("-"* 100) + "\n\nBrief Report:\n\n" + brief_string + "\n" + ("-"* 100)
+    final_string = "Detailed Report:\n\n" + detail_string + "\n" + ("-"* 100) + "\n\nBrief Report:\n\n" + brief_string + "\n" + ("-"* 100)
 
     # Ensure Progress Bar finishes
     window.update_progressbar(100)
