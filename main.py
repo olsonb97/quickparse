@@ -276,10 +276,10 @@ class MainWindow(tk.Tk):
         else:
             resource_path = os.path.join(os.getcwd(), 'resources')
 
-        ico_path = os.path.join(resource_path, 'quickparse.ico')
+        self.icon_path = os.path.join(resource_path, 'quickparse.ico')
         
         try:
-            self.iconbitmap(ico_path)
+            self.iconbitmap(self.icon_path)
         except Exception as e:
             print(f"Failed to load icon: {e}")
 
