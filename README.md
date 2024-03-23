@@ -32,6 +32,16 @@ C9300:
     MAC Address: 'MAC Address\s+:\s+(\S+)'
 ```
 
+OS keys are also compatible! The only requirement is that key appear in the text:
+```yaml
+Cisco IOS XE:
+    Version:
+    - 'Cisco IOS XE Software, Version (.*)'
+    - 'Cisco IOS XE Software Version (\S+)'
+Arista EOS:
+    Version: 'Arista EOS Version: (.*)'
+```
+
 ### Extensibility
 - **Format Flexibility**: Default pattern files are YAML for readability and ease of use, but JSON format is also supported for those who prefer it.
 - **Modular Parsing**: The QuickParser class is designed to function independently, allowing it to be imported and utilized in other Python projects.
