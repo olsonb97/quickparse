@@ -256,7 +256,7 @@ class MainWindow(tk.Tk):
 
     # Set the GUI elements
     def configure_ui(self):
-        self.title("QuickParse")
+        self.title("Quickparse")
         self.configure(background="#2e2b2b")
         self.center_window(1200, 650)
         self.fonts = {
@@ -351,7 +351,7 @@ class MainWindow(tk.Tk):
             print("Invalid folder selection")
     # Action to save the textbox to a file
     def save_action(self):
-        save_path = open_dialog(self, "save", [("YAML", "*.yaml")], ".yaml", title="Save as")
+        save_path = open_dialog(self, "save", [("Text File", "*.txt")], ".yaml", title="Save as", initial_name="Quickparse_Report")
         if save_path:
             text_content = self.text_box.get("1.0", tk.END)
             with open(save_path, 'w') as file:
@@ -379,7 +379,7 @@ class MainWindow(tk.Tk):
 
     # Find the config folder
     def get_config_path(self):
-        app_name = "QuickParse"
+        app_name = "Quickparse"
         operating_system = os.name
         platform = sys.platform
         if operating_system == 'nt':  # Windows
