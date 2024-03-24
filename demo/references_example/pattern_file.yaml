@@ -13,4 +13,5 @@ C9200L:
     Version: 
     - 'Cisco IOS XE Software, Version (.*)'
     - 'Cisco IOS XE Software Version (.*)'
+    OS: 'IOS (.*)'
 ...
