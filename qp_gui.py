@@ -351,7 +351,7 @@ class MainWindow(tk.Tk):
             print("Invalid folder selection")
     # Action to save the textbox to a file
     def save_action(self):
-        save_path = open_dialog(self, "save", [("Text File", "*.txt")], ".yaml", title="Save as", initial_name="Quickparse_Report")
+        save_path = open_dialog(self, "save", [("Text File", "*.txt")], ".txt", title="Save as", initial_name="Quickparse_Report")
         if save_path:
             text_content = self.text_box.get("1.0", tk.END)
             with open(save_path, 'w') as file:
