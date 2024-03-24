@@ -10,16 +10,17 @@ This lightweight tool parses log files against a reference to detect deviations.
 
 ### Quick Start
 - **Setup**: Clone the repo and ensure the reference folder has log files and a YAML pattern file.
-- **Run**: Execute the application, select the target folder, and click Parse.
+- **Run**: Execute the application, select your reference and target folder, and click "Parse".
 
 ### Requirements
 - **Reference Folder**:
-    - One YAML pattern file.
     - At least one log file.
-    - Device names in logs must match YAML keys.
+    - One YAML pattern file.
+        - YAML keys must occur in the text being parsed.
 
 ### YAML Patterns
-Define device variables with minimal regex patterns (Sequences parse in hierarchical order):
+- Define device variables with minimal regex patterns. (Sequences parse in hierarchical order)
+- Each regex string requires exactly one group () for parsing.
 
 ```yaml
 C9200L:
@@ -32,7 +33,7 @@ C9300:
     MAC Address: 'MAC Address\s+:\s+(\S+)'
 ```
 
-OS keys are also compatible! The only requirement is that key appear in the text:
+OS keys are also compatible! The only requirement is that the key appear in the text:
 ```yaml
 Cisco IOS XE:
     Version:
