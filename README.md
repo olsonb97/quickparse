@@ -19,8 +19,8 @@ This lightweight tool parses log files against a reference to detect deviations.
         - YAML keys must occur in the text being parsed.
 
 ### YAML Patterns
-Define device variables with minimal regex patterns (Sequences parse in hierarchical order)
-Each regex string requires exactly one group () for parsing:
+- Define device variables with minimal regex patterns. (Sequences parse in hierarchical order)
+- Each regex string requires exactly one group () for parsing.
 
 ```yaml
 C9200L:
