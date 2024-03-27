@@ -4,45 +4,10 @@ import os
 import sys
 from datetime import datetime
 import logging
+import shutil
 import threading
-from utils.parse_utils import QuickParser
-
-class QuickparseError(Exception):
-    def __init__(self, message=""):
-        super().__init__(message)
-
-new_pattern_file = r"""
-# Define devices (name must appear in the log) and variables:
-#
-# DeviceName:  # Use device name from logs
-#   variableName: 'regexPattern'  # Use one () group in regex
-#
-# For multiple regex patterns per variable:
-#   variableName:
-#     - 'pattern1'  # One () group
-#     - 'pattern2'  # One () group
-
----
-C1100TGX:
-    Version: 'Cisco IOS XE Software, Version (.*)'
-C9200L:
-    Version: 
-    - 'Cisco IOS XE Software, Version (.*)'
-    - 'Cisco IOS XE Software Version (.*)'
-C93180:
-    Version: 'NXOS:\s+version (.*)'
-C9336:
-    Version: 'NXOS:\s+version (.*)'
-N8560:
-    Version: 'Software version\s+: (.*)'
-FS S3900:
-    Version: '(Version\s+\S+\s+Build\s+\d+)'
-S5850:
-    Version: 'S5850,\s+Version\s+(.*)'
-PA-3260:
-    Version: 'sw-version:\s+(.*)'
-...
-"""
+from utils.quickparser import Quickparser
+from utils.errors import ParsingError
 
 # GUI to return a file path
 def open_dialog(parent, dialog_type="open", filetypes=[("All Files", "*.*")], default_ext=None, initial_name="", initial_dir="", title=""):
@@ -78,7 +43,6 @@ def validate_reference_folder(folder_path):
 
 # Get a list of file paths from a folder path
 def get_list_of_files(folder_path, exts: tuple):
-    logging.debug(f'Building file list for {folder_path}')
     filepaths = []
     for file in os.listdir(folder_path):
         full_path = os.path.join(folder_path, file)
@@ -94,12 +58,12 @@ def main_parse(reference_folder_path, target_folder_path, window):
     # Validate the reference folder
     error_message = validate_reference_folder(reference_folder_path)
     if error_message:
-        raise QuickparseError(error_message)
+        raise ParsingError(error_message)
 
     # Get list of file paths
     target_filepaths = get_list_of_files(target_folder_path, ('.txt', '.log'))
     if not target_filepaths: # Cancel if no parsable files in the target folder
-        raise QuickparseError("Cancelled: No files in the target folder can be parsed.")
+        raise ParsingError("Cancelled: No files in the target folder can be parsed.")
     reference_filepaths = get_list_of_files(reference_folder_path, ('.txt', '.log'))
     
     # Get the total steps of the progress bar
@@ -123,7 +87,8 @@ def main_parse(reference_folder_path, target_folder_path, window):
     # Find the pattern file
     pattern_file, = get_list_of_files(reference_folder_path, ('.yaml', '.yml'))
     if not pattern_file: # Cancel if pattern file is None
-        raise QuickparseError(f"No pattern file found in Reference Folder: {reference_folder_path}")
+        raise ParsingError(f"No pattern file found in Reference Folder: {reference_folder_path}")
+    logging.info(f'Discovered Pattern File: {os.path.basename(pattern_file)}')
     
     # Iterate through reference files
     for reference_file in reference_filepaths:
@@ -134,12 +99,13 @@ def main_parse(reference_folder_path, target_folder_path, window):
             reference_file_contents = file.read()
         
         # Find the device type and OS of the reference file
-        device_type = QuickParser.discover(reference_file_contents, pattern_file)
+        device_type = Quickparser.discover(reference_file_contents, pattern_file)
         if not device_type: # Cancel if device discover returns None
-            raise QuickparseError(f"No device discovered within reference file: {reference_file_name}. Validate the pattern file's regex.")
+            raise ParsingError(f"No device discovered within reference file: {reference_file_name}. Validate the pattern file's regex.")
+        logging.info(f"Discovered '{device_type}' in referenece file: {reference_file_name}")
 
         # Create a parser object subject to the device contained in the pattern file
-        parser = QuickParser(device_type, pattern_file, log_bool=True)
+        parser = Quickparser(device_type, pattern_file, log=True)
 
         # Parse the Reference File
         logging.debug(f"Parsing Reference File: {reference_file_name}")
@@ -152,10 +118,10 @@ def main_parse(reference_folder_path, target_folder_path, window):
 
         # Handle any issues
         if not parsed_reference_dict:
-            raise QuickparseError(f"Failed to parse reference file: {reference_file_name}. Reference File returned no matches.")
+            raise ParsingError(f"Failed to parse reference file: {reference_file_name}. Reference File returned no matches.")
         for key, val in parsed_reference_dict.items(): # Error if reference file fails to parse a variable
             if val == "NOT FOUND":
-                raise QuickparseError(f"Failed to parse reference file: {reference_file_name} variable: ({key})")
+                raise ParsingError(f"Failed to parse reference file: {reference_file_name} variable: ({key})")
 
         # Update detailed dict with the parsed reference file
         device_check = detail_dict["Reference Folder"].get(device_type) # Check if the device has already been found
@@ -163,7 +129,7 @@ def main_parse(reference_folder_path, target_folder_path, window):
             detail_dict["Reference Folder"][device_type] = {reference_file_name: parsed_reference_dict}
         else: # Error if duplicate files for the same device
             duplicate_file, = device_check.keys() # Get dupe file name
-            raise QuickparseError(f"Two files for the same device found:\n{reference_file}\n{duplicate_file}")
+            raise ParsingError(f"Two files for the same device found:\n{reference_file}\n{duplicate_file}")
 
         # Begin parsing target files against the ref file
         for filepath in target_filepaths.copy(): # Copy in order to simultaneously iterate and remove elements
@@ -176,7 +142,7 @@ def main_parse(reference_folder_path, target_folder_path, window):
                 found_devices.add(device_type)
                 logging.debug(f'Parsing File: {base_file}')
                 parsed_file_dict = parser.parse(file_contents)
-                matches, mismatches = QuickParser.compare(parsed_reference_dict, parsed_file_dict) # Compare the two
+                matches, mismatches = Quickparser.compare(parsed_reference_dict, parsed_file_dict) # Compare the two
                 detail_dict["Scanned Folder"]["Matches"].update({base_file: matches})
                 detail_dict["Scanned Folder"]["Deviations"].update({base_file: mismatches})
                 target_filepaths.remove(filepath) # Remove from original list to shorten future operations
@@ -188,21 +154,22 @@ def main_parse(reference_folder_path, target_folder_path, window):
                 window.update_progressbar(progress)
 
     # Build the final dictionaries and strings
-    detail_dict = QuickParser.collapse(detail_dict)
+    logging.debug('Serializing data...')
+    detail_dict = Quickparser.collapse(detail_dict)
     brief_dict = {
         "Completion Date": datetime.now().strftime(r'%I:%M %p - %B %d, %Y').lstrip("0"),
         "Devices Found": list(found_devices),
         "Devices Not Found": files_without_devices,
         "Folder (Reference)": reference_folder_path,
         "Folder (Scanned)": target_folder_path,
-        "Total Deviations": len(QuickParser.leafify(detail_dict.get("Scanned Folder", {}).get("Deviations", {}))),
+        "Total Deviations": len(Quickparser.leafify(detail_dict.get("Scanned Folder", {}).get("Deviations", {}))),
         "Total Files Scanned": scanned_files,
         "Total Files Found": num_files_to_scan,
         "Verdict": ("FAIL" if (detail_dict.get("Scanned Folder", {}).get("Deviations") or files_without_devices or (scanned_files != num_files_to_scan)) else "PASS")
     }
-    brief_dict = QuickParser.collapse(brief_dict)
-    detail_string = QuickParser.serialize(detail_dict, 'yaml')
-    brief_string = QuickParser.serialize(brief_dict, 'yaml')
+    brief_dict = Quickparser.collapse(brief_dict)
+    detail_string = Quickparser.serialize(detail_dict, 'yaml')
+    brief_string = Quickparser.serialize(brief_dict, 'yaml')
     final_string = "Detailed Report:\n\n" + detail_string + "\n" + ("-"* 100) + "\n\nBrief Report:\n\n" + brief_string + "\n" + ("-"* 100)
 
     # Ensure Progress Bar finishes
@@ -263,7 +230,7 @@ class MainWindow(tk.Tk):
     # Set the GUI elements
     def configure_ui(self):
         self.title("Quickparse")
-        self.configure(background="#2e2b2b")
+        self.configure(background="#454444")
         self.center_window(1200, 650)
         self.fonts = {
             'button': ('Nirmala UI', 9),
@@ -322,7 +289,7 @@ class MainWindow(tk.Tk):
         self.parse_folder_label = self.create_label("No folder selected", 1, 1)
 
     def create_label(self, text, row, col):
-        label = tk.Label(self, text=text, bg='#2e2b2b', fg='white', font=self.fonts['label'])
+        label = tk.Label(self, text=text, bg='#454444', fg='white', font=self.fonts['label'])
         label.grid(row=row, column=col, padx=5, pady=5)
         return label
 
@@ -424,13 +391,13 @@ class MainWindow(tk.Tk):
                 'default_reference_path': self.config_path
             }
             with open(config_file, 'w') as file:
-                QuickParser.dump(config_data, file, 'yaml')
+                Quickparser.dump(config_data, file, 'yaml')
             messagebox.showinfo("Savefile Created", f"Savefile created at\n{str(config_file)}\n\nThis file is used to save your settings.")
         return config_file
 
     # Load config file into default paths
     def load_config_data(self, config_file):
-        config_dict = QuickParser.load(config_file, 'yaml')
+        config_dict = Quickparser.load(config_file, 'yaml')
         self.default_reference_path = config_dict['default_reference_path']
 
     # Update config file with new default paths
@@ -439,7 +406,7 @@ class MainWindow(tk.Tk):
             'default_reference_path': default_reference_path,
         }
         with open(self.config_file, 'w') as file:
-            QuickParser.dump(config_data, file, 'yaml')
+            Quickparser.dump(config_data, file, 'yaml')
 
     # Reset the configuration file
     def reset_config(self):
@@ -453,10 +420,10 @@ class MainWindow(tk.Tk):
         if okcancel:
             save_path = open_dialog(parent=self, dialog_type="save", initial_dir=path, initial_name="pattern_file.yaml", filetypes=[("YAML", "*.yaml")], default_ext=".yaml")
             if save_path:
-                with open(save_path, 'w') as file:
-                    new_regex_file = QuickParser.dump(new_pattern_file, file, 'yaml')
-                if new_regex_file:
-                    messagebox.showinfo(title="Success", message=f"Successfully saved to\n{new_regex_file}")
+                base_dir = sys.path[0]  # Directory where the script is located
+                source_pattern_file = os.path.join(base_dir, 'resources', 'pattern_file.yaml')
+                shutil.copy(source_pattern_file, save_path)
+                messagebox.showinfo(title="Success", message=f"Pattern file copied successfully to\n{save_path}")
 
     # Action to open a settings window
     def open_settings_window(self):
@@ -476,8 +443,8 @@ class MainWindow(tk.Tk):
         window.geometry(f'{width}x{height}+{x}+{y}')
         window.minsize(600, 100)
         window.maxsize(1400, 100)
-        window.configure(bg="#2e2b2b")
-        window.button_frame = tk.Frame(window, bg="#2e2b2b")
+        window.configure(bg="#454444")
+        window.button_frame = tk.Frame(window, bg="#454444")
         window.button_frame.grid(row=2, column=0, columnspan=2, pady=5)
         try:
             window.iconbitmap(self.icon_path)
@@ -487,7 +454,7 @@ class MainWindow(tk.Tk):
     # Create the settings window widgets
     def populate_settings_widgets(self, window):
         # Label for displaying the selected default reference folder
-        lbl_reference_path = tk.Label(window, text=self.default_reference_path, bg="#2e2b2b", fg="white", font=self.fonts['label'])
+        lbl_reference_path = tk.Label(window, text=self.default_reference_path, bg="#454444", fg="white", font=self.fonts['label'])
         lbl_reference_path.grid(row=0, column=1, padx=10, pady=10, sticky="w")
 
         # Button for choosing the default reference folder
@@ -545,6 +512,7 @@ class MainWindow(tk.Tk):
         button = tk.Button(frame, text=text, command=command, bg="white", fg="black", font=self.fonts['button'])
         button.pack(side="left", padx=10)
 
+    # Action to reset the config file
     def reset_action(self, window):
         choice = messagebox.askyesno("Confirm", "Reset default reference folder?", parent=window)
         if choice:

@@ -2,23 +2,22 @@ import re
 import yaml
 import json
 import logging
-from typing import IO, Optional
+from typing import IO, Optional, Literal
+from .errors import QuickparserError
 
-class QuickParser:
+class Quickparser:
     ext = '.yaml'
 
-    def __init__(self, device: str, pattern_file: str, ext: Optional[str] = ext, log_bool: Optional[bool] = False):
+    def __init__(self, device: str, pattern_file: str, ext: Literal['.yaml', '.json'] = ext, log: Optional[bool] = False):
         """
-        Initialize QuickParser specific to the device.
+        Initialize Quickparser specific to the device.
 
         Args:
             device (str): The device to parse. Use discover to find it.
             pattern_file (str): The pattern file to be used.
             ext (str, optional): Pattern file extension, default is '.yaml'.
-        Raises:
-            ValueError: If ext is not '.yaml' or '.json'.
         """
-        self.logging = log_bool
+        self.logging = log
         self.device = device
         self.logger = logging.getLogger(f'{__name__}.{self.device}')
         self.logger.setLevel(logging.DEBUG)
@@ -44,8 +43,8 @@ class QuickParser:
 
         self.ext = ext.strip().lower()
         
-        self.pattern_file = QuickParser.load(pattern_file, self.ext)
-        self.log('info', f"Initialized QuickParser for device '{self.device}'")
+        self.pattern_file = Quickparser.load(pattern_file, self.ext)
+        self.log('info', f"Initialized Quickparser for device '{self.device}'")
 
 
     def log(self, level: str, message: str):
@@ -126,9 +125,9 @@ class QuickParser:
 
         Returns:
             dict: The parsed dictionary containing the regex output.
-        
+
         Raises:
-            
+            QuickparserError: Parsing failed. Check pattern file, regex, or input text.
         """
         try:
             # Logging the start of the parsing process
@@ -141,9 +140,9 @@ class QuickParser:
             parsed_results = self._parse(var_dict, input_text, collapse)
 
             # Returning the parsed results after collapsing empty dictionaries
-            return QuickParser.collapse(parsed_results)
+            return Quickparser.collapse(parsed_results)
         except Exception as e:
-            raise RuntimeError(f"Unexpected parsing error: {e}")
+            raise QuickparserError(f"Unexpected parsing error: {e}")
 
     @staticmethod
     def load(file_path: str, ext: str) -> dict:
@@ -158,7 +157,7 @@ class QuickParser:
             dict: The loaded data as a dictionary.
 
         Raises:
-            ValueError: If there's an error processing the data file.
+            QuickparserError: If there's an error processing the data file.
         """
         try:
             ext = ext.lower().strip()
@@ -168,7 +167,7 @@ class QuickParser:
                 elif ext in ['.json', 'json']:
                     return json.load(file)
         except Exception as e:
-            raise ValueError(f"Failed to process data: {e}")
+            raise QuickparserError(f"Failed to process data: {e}")
 
     @staticmethod
     def dump(data: dict, file: IO, ext: str):
@@ -181,7 +180,7 @@ class QuickParser:
             ext: The extension indicating the format (".json", ".yaml").
 
         Raises:
-            ValueError: If there's an error writing data to the file.
+            QuickparserError: If there's an error writing data to the file.
         """
         try:
             ext = ext.lower().strip()
@@ -190,7 +189,7 @@ class QuickParser:
             elif ext in ['.json', 'json']:
                 json.dump(data, file, indent=4)
         except Exception as e:
-            raise ValueError(f"Failed to write data: {e}")
+            raise QuickparserError(f"Failed to write data: {e}")
 
     @staticmethod
     def serialize(data: dict, ext: str) -> str:
@@ -205,7 +204,7 @@ class QuickParser:
             str: The string representation of the dictionary.
 
         Raises:
-            ValueError: If there's an error converting the dictionary to a string.
+            QuickparserError: If there's an error converting the dictionary to a string.
         """
         ext = ext.lower().strip()
         try:
@@ -214,7 +213,7 @@ class QuickParser:
             elif ext in ['.json', 'json']:
                 return json.dumps(data, indent=4)
         except Exception as e:
-            raise ValueError(f"Failed to convert data to {ext} string: {e}")
+            raise QuickparserError(f"Failed to convert data to {ext} string: {e}")
         
     @staticmethod
     def discover(input_text: str, pattern_file: str) -> tuple[str, str]:
@@ -229,7 +228,7 @@ class QuickParser:
             str: The device found
 
         Raises:
-            LookupError: If no device is found, error.
+            QuickparserError: If no device is found, error.
         """
         
         # Load device names directly into a list of leaf nodes
@@ -243,7 +242,7 @@ class QuickParser:
         for device in pattern_dict:
             if device in input_text:
                 return device
-        raise LookupError(f"No device discovered in {pattern_file}")
+        raise QuickparserError(f"No device discovered in {pattern_file}")
     
     @staticmethod
     def collapse(dictionary: dict) -> dict:
@@ -267,7 +266,7 @@ class QuickParser:
             # Check if the value is a dictionary itself
             if isinstance(val, dict):
                 # Recursively collapse the nested dictionary
-                QuickParser.collapse(val)
+                Quickparser.collapse(val)
                 # If the nested dictionary is empty after collapsing, mark its key for deletion
                 if not val:
                     keys_to_delete.append(key)
@@ -296,13 +295,13 @@ class QuickParser:
         for value in input_dict.values():
             if isinstance(value, dict):
                 # Recursively search within nested dictionaries
-                leaf_nodes.extend(QuickParser.leafify(value))
+                leaf_nodes.extend(Quickparser.leafify(value))
             elif isinstance(value, (list, tuple, set)):
                 # Extend the list with each item in the iterable
                 for item in value:
                     if isinstance(item, dict):
                         # Recursively search within nested dictionaries inside the iterable
-                        leaf_nodes.extend(QuickParser.leafify(item))
+                        leaf_nodes.extend(Quickparser.leafify(item))
                     else:
                         leaf_nodes.append(item)
             else:
@@ -355,7 +354,7 @@ class QuickParser:
                 if key not in current_ref_dict:
                     current_mismatch_dict[key] = current_comp_dict[key]
 
-        match_dict = QuickParser.collapse(match_dict)
-        mismatch_dict = QuickParser.collapse(mismatch_dict)
+        match_dict = Quickparser.collapse(match_dict)
+        mismatch_dict = Quickparser.collapse(mismatch_dict)
 
         return match_dict, mismatch_dict

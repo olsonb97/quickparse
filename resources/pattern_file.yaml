@@ -1,0 +1,30 @@
+# Define devices (name must appear in the log) and variables:
+#
+# DeviceName:  # Use device name from logs
+#   variableName: 'regexPattern'  # Use one () group in regex
+#
+# For multiple regex patterns per variable:
+#   variableName:
+#     - 'pattern1'  # One () group
+#     - 'pattern2'  # One () group
+
+---
+C1100TGX:
+    Version: 'Cisco IOS XE Software, Version (.*)'
+C9200L:
+    Version: 
+    - 'Cisco IOS XE Software, Version (.*)'
+    - 'Cisco IOS XE Software Version (.*)'
+C93180:
+    Version: 'NXOS:\s+version (.*)'
+C9336:
+    Version: 'NXOS:\s+version (.*)'
+N8560:
+    Version: 'Software version\s+: (.*)'
+FS S3900:
+    Version: '(Version\s+\S+\s+Build\s+\d+)'
+S5850:
+    Version: 'S5850,\s+Version\s+(.*)'
+PA-3260:
+    Version: 'sw-version:\s+(.*)'
+...
