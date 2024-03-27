@@ -228,6 +228,7 @@ class Quickparser:
             str: The device found
 
         Raises:
+            QuickparserError: If pattern file is Falsy
             QuickparserError: If no device is found, error.
         """
         
@@ -236,13 +237,16 @@ class Quickparser:
             pattern_dict = yaml.safe_load(file)
 
         if not pattern_dict:
-            return None
+            raise QuickparserError("Invalid pattern file")
+        
+        # Compile a regular expression that matches any of the devices
+        devices_pattern = re.compile('|'.join(re.escape(device) for device in pattern_dict))
 
-        # Search for any device in the input text
-        for device in pattern_dict:
-            if device in input_text:
-                return device
-        raise QuickparserError(f"No device discovered in {pattern_file}")
+        # Search for the first occurrence of any device in the input text
+        if match := devices_pattern.search(input_text):
+            return match.group()
+        else:
+            raise QuickparserError(f"No device discovered in {pattern_file}")
     
     @staticmethod
     def collapse(dictionary: dict) -> dict:
