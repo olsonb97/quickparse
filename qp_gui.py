@@ -1,9 +1,15 @@
-from tkinter import filedialog, scrolledtext, messagebox, ttk, PhotoImage
+from tkinter import filedialog, scrolledtext, messagebox, ttk
 import tkinter as tk
 import os
 import sys
 from datetime import datetime
-from resources.parse_utils import QuickParser
+import logging
+import threading
+from utils.parse_utils import QuickParser
+
+class QuickparseError(Exception):
+    def __init__(self, message=""):
+        super().__init__(message)
 
 new_pattern_file = r"""
 # Define devices (name must appear in the log) and variables:
@@ -50,6 +56,7 @@ def open_dialog(parent, dialog_type="open", filetypes=[("All Files", "*.*")], de
 
 # Validate the reference folder is valid
 def validate_reference_folder(folder_path):
+    logging.debug('Validating Reference Folder')
     valid_pattern = False
     valid_logs = False
     for file in os.listdir(folder_path):
@@ -59,7 +66,7 @@ def validate_reference_folder(folder_path):
             valid_logs = True
 
     if valid_logs and valid_pattern:
-        return True
+        return None
 
     if not valid_logs and not valid_pattern:
         error_message = "both pattern file (.yaml) and log files (.log, .txt)"
@@ -69,29 +76,41 @@ def validate_reference_folder(folder_path):
         error_message = "pattern file (.yaml)"
     return f"Reference Folder is not valid: missing {error_message}."
 
-# Main function for parsing
-def main_parse(reference_folder_path, folder_path, window):
+# Get a list of file paths from a folder path
+def get_list_of_files(folder_path, exts: tuple):
+    logging.debug(f'Building file list for {folder_path}')
+    filepaths = []
+    for file in os.listdir(folder_path):
+        full_path = os.path.join(folder_path, file)
+        # Check if it's a file and has the correct extension
+        if os.path.isfile(full_path) and file.endswith(exts):
+            filepaths.append(full_path)
+    return filepaths or None
 
+# Main function for parsing
+def main_parse(reference_folder_path, target_folder_path, window):
+    logging.debug('Working...')
+
+    # Validate the reference folder
     error_message = validate_reference_folder(reference_folder_path)
-    if error_message != True:
-        print(error_message)
-        return
-    
-    print("\nWorking...")
+    if error_message:
+        raise QuickparseError(error_message)
 
     # Get list of file paths
-    filepaths = [os.path.join(folder_path, file) for file in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, file)) and (file.endswith('.log') or file.endswith('.txt'))]
-    num_files_to_scan = len(filepaths)
-    files_without_devices = filepaths.copy()
-
+    target_filepaths = get_list_of_files(target_folder_path, ('.txt', '.log'))
+    if not target_filepaths: # Cancel if no parsable files in the target folder
+        raise QuickparseError("Cancelled: No files in the target folder can be parsed.")
+    reference_filepaths = get_list_of_files(reference_folder_path, ('.txt', '.log'))
+    
     # Get the total steps of the progress bar
-    num_reference_files = len([file for file in os.listdir(reference_folder_path) if file.endswith(".txt") or file.endswith(".log")])
+    num_files_to_scan = len(target_filepaths)
+    num_reference_files = len(reference_filepaths)
     total_loading_steps = num_files_to_scan + num_reference_files
     
     # Get other variables
+    files_without_devices = [os.path.basename(file) for file in target_filepaths] # As files are parsed, they get removed from here
     total_completed_steps = 0
     scanned_files = 0
-    errors = []
     found_devices = set()
     detail_dict = {
         "Reference Folder": {},
@@ -101,50 +120,30 @@ def main_parse(reference_folder_path, folder_path, window):
         }
     }
 
-    # Cancel if no parsable files in the parse folder
-    if not filepaths:
-        print("Cancelled: No files in the selected folder can be parsed.")
-        return
-    
     # Find the pattern file
-    pattern_file = None
-    for file in os.listdir(reference_folder_path):
-        if str(file).endswith(".yaml"):
-            pattern_file = os.path.join(reference_folder_path, file)
-    if not pattern_file:
-        print(f"No pattern file found in Reference Folder: {reference_folder_path}")
-        return
+    pattern_file, = get_list_of_files(reference_folder_path, ('.yaml', '.yml'))
+    if not pattern_file: # Cancel if pattern file is None
+        raise QuickparseError(f"No pattern file found in Reference Folder: {reference_folder_path}")
     
     # Iterate through reference files
-    for reference_file in os.listdir(reference_folder_path):
-
-        # Verify the reference file
-        if not reference_file.endswith(".yaml") and not reference_file.endswith(".txt") and reference_file.endswith(".log"):
-            print("Reference Folder not valid. Please make sure the Reference Folder only has logs and a pattern file.")
-            return
+    for reference_file in reference_filepaths:
         
-        # Initialize reference variables for reference file
-        reference_file_path = os.path.join(reference_folder_path, reference_file)
-        reference_file_name = os.path.basename(reference_file_path)
-        with open(reference_file_path, 'r') as file:
-            reference_file_string = file.read()
-
-        # Cancel if reference file is not valid
-        if not reference_file_path.endswith('.txt') and not reference_file_path.endswith('.log'):
-            continue
+        # Initialize reference file basename and contents
+        reference_file_name = os.path.basename(reference_file)
+        with open(reference_file, 'r') as file:
+            reference_file_contents = file.read()
         
         # Find the device type and OS of the reference file
-        device_type = QuickParser.discover(reference_file_string, pattern_file)
-        if not device_type:
-            print(f"No device discovered within reference file: {reference_file_name}. Validate the pattern file's regex.")
-            return
-        
-        # Create a parser object for the device
+        device_type = QuickParser.discover(reference_file_contents, pattern_file)
+        if not device_type: # Cancel if device discover returns None
+            raise QuickparseError(f"No device discovered within reference file: {reference_file_name}. Validate the pattern file's regex.")
+
+        # Create a parser object subject to the device contained in the pattern file
         parser = QuickParser(device_type, pattern_file, log_bool=True)
 
         # Parse the Reference File
-        parser.log('debug', f"Parsing Reference File: {reference_file_name}")
-        parsed_reference_dict = parser.parse(reference_file_string, collapse=False)
+        logging.debug(f"Parsing Reference File: {reference_file_name}")
+        parsed_reference_dict = parser.parse(reference_file_contents, collapse=False)
 
         # Update Progress Bar
         total_completed_steps += 1
@@ -153,62 +152,53 @@ def main_parse(reference_folder_path, folder_path, window):
 
         # Handle any issues
         if not parsed_reference_dict:
-            print(f"Failed to parse reference file: {reference_file_name}. Reference File returned no matches.")
-            return
-        for key, val in parsed_reference_dict.items(): # Error if reference fails to parse
+            raise QuickparseError(f"Failed to parse reference file: {reference_file_name}. Reference File returned no matches.")
+        for key, val in parsed_reference_dict.items(): # Error if reference file fails to parse a variable
             if val == "NOT FOUND":
-                errors.append(f"Failed to parse reference file: {reference_file_name} variable: ({key})")
+                raise QuickparseError(f"Failed to parse reference file: {reference_file_name} variable: ({key})")
 
-        # Update detailed dict
-        ref_already_exists = detail_dict["Reference Folder"].get(device_type)
-        if not ref_already_exists:
+        # Update detailed dict with the parsed reference file
+        device_check = detail_dict["Reference Folder"].get(device_type) # Check if the device has already been found
+        if not device_check: # Add ref file to dict if device not already found
             detail_dict["Reference Folder"][device_type] = {reference_file_name: parsed_reference_dict}
-        else: # Check if duplicate files exist
-            dupe_file = list(ref_already_exists.keys())[0] # Get dupe file name
-            print(f"Duplicate reference files for the same device found:\n{reference_file}\n{dupe_file}")
-            return
+        else: # Error if duplicate files for the same device
+            duplicate_file, = device_check.keys() # Get dupe file name
+            raise QuickparseError(f"Two files for the same device found:\n{reference_file}\n{duplicate_file}")
 
-        # Find files that have same device as the reference file
-        for filepath in filepaths.copy(): # Copy so that we can simultaneously iterate and remove elements
+        # Begin parsing target files against the ref file
+        for filepath in target_filepaths.copy(): # Copy in order to simultaneously iterate and remove elements
             base_file = os.path.basename(filepath)
             with open(filepath, 'r') as file:
-                file_string = file.read()
-            if device_type in file_string:
-                # Device is found, so remove it from the "Device Not Found" list
-                if filepath in files_without_devices:
-                    files_without_devices.remove(filepath)
+                file_contents = file.read()
+            if device_type in file_contents: # Only parse if the devices match
+                if base_file in files_without_devices: # Device is found, so remove the file from the "files_without_devices" list
+                    files_without_devices.remove(base_file)
                 found_devices.add(device_type)
-                parser.log('debug', f'Parsing File: {base_file}')
-                parsed_file_dict = parser.parse(file_string)
+                logging.debug(f'Parsing File: {base_file}')
+                parsed_file_dict = parser.parse(file_contents)
                 matches, mismatches = QuickParser.compare(parsed_reference_dict, parsed_file_dict) # Compare the two
                 detail_dict["Scanned Folder"]["Matches"].update({base_file: matches})
                 detail_dict["Scanned Folder"]["Deviations"].update({base_file: mismatches})
-                filepaths.remove(filepath) # Remove from original list to shorten future operations
+                target_filepaths.remove(filepath) # Remove from original list to shorten future operations
                 scanned_files += 1
 
                 # Update Progress Bar
                 total_completed_steps += 1
                 progress = total_completed_steps / total_loading_steps * 100
                 window.update_progressbar(progress)
-    
-    # Add devices not found to the errors list
-    if files_without_devices:
-        for file in files_without_devices:
-            errors.append(f"Device Not Found: {os.path.basename(file)}")
 
     # Build the final dictionaries and strings
     detail_dict = QuickParser.collapse(detail_dict)
     brief_dict = {
         "Completion Date": datetime.now().strftime(r'%I:%M %p - %B %d, %Y').lstrip("0"),
-        "Errors": errors,
+        "Devices Found": list(found_devices),
+        "Devices Not Found": files_without_devices,
         "Folder (Reference)": reference_folder_path,
-        "Folder (Scanned)": folder_path,
-        "Found Devices": list(found_devices),
-        "Total Errors": len(errors),
+        "Folder (Scanned)": target_folder_path,
         "Total Deviations": len(QuickParser.leafify(detail_dict.get("Scanned Folder", {}).get("Deviations", {}))),
         "Total Files Scanned": scanned_files,
         "Total Files Found": num_files_to_scan,
-        "Verdict": ("FAIL" if (detail_dict.get("Scanned Folder", {}).get("Deviations") or errors or (scanned_files != num_files_to_scan)) else "PASS")
+        "Verdict": ("FAIL" if (detail_dict.get("Scanned Folder", {}).get("Deviations") or files_without_devices or (scanned_files != num_files_to_scan)) else "PASS")
     }
     brief_dict = QuickParser.collapse(brief_dict)
     detail_string = QuickParser.serialize(detail_dict, 'yaml')
@@ -225,20 +215,36 @@ def main_parse(reference_folder_path, folder_path, window):
 
 # Class to redirect stdout to the text box
 class TextRedirector:
-    def __init__(self, widget):
+    def __init__(self, widget, max_lines=1000, update_interval=10):
         self.widget = widget
+        self.buffer = []
+        self.max_lines = max_lines
+        self.update_interval = update_interval  # Milliseconds
 
     def write(self, string):
-        self.widget.after(0, self._insert, string)
-
-    def _insert(self, string):
-        self.widget.config(state='normal')
-        self.widget.insert(tk.END, string)
-        self.widget.see(tk.END)  # Auto-scroll to the end
-        self.widget.config(state='disabled')
+        self.buffer.append(string)
+        if not hasattr(self, '_scheduled_update'):
+            self._scheduled_update = self.widget.after(self.update_interval, self._update_text)
 
     def flush(self):
         pass
+
+    def _update_text(self):
+        text_to_insert = ''.join(self.buffer)
+        self.widget.config(state='normal')
+        self.widget.insert(tk.END, text_to_insert)
+        self.widget.see(tk.END)  # Auto-scroll to the end
+        self.widget.config(state='disabled')
+
+        # Clear the buffer
+        self.buffer.clear()
+
+        # Limit the number of lines in the text box
+        lines = self.widget.get('1.0', tk.END).splitlines()
+        if len(lines) > self.max_lines:
+            self.widget.delete('1.0', f'{len(lines)-self.max_lines}.0')
+
+        delattr(self, '_scheduled_update')
 
 class MainWindow(tk.Tk):
     def __init__(self):
@@ -324,8 +330,20 @@ class MainWindow(tk.Tk):
         self.text_box = scrolledtext.ScrolledText(self, wrap=tk.WORD, bg="black", fg="white", font=self.fonts['text'])
         self.text_box.grid(row=2, column=0, columnspan=4, padx=5, pady=5, sticky="nsew")
         self.text_box.config(state='disabled')
-        sys.stdout = TextRedirector(self.text_box)
-        sys.stderr = TextRedirector(self.text_box)
+
+        # Redirect output to the text box
+        text_redirector = TextRedirector(self.text_box)
+        sys.stdout = text_redirector
+        sys.stderr = text_redirector
+
+        # Set up logging to redirect to the text box
+        text_redirector = TextRedirector(self.text_box)
+        logging_handler = logging.StreamHandler(text_redirector)
+        logging_handler.setFormatter(logging.Formatter('%(asctime)s.%(msecs)03d - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
+        logging.getLogger().addHandler(logging_handler)
+        logging.getLogger().setLevel(logging.DEBUG)
+        logger = logging.getLogger()
+        logger.addHandler(logging_handler)
 
     def create_progressbar(self):
         self.progressbar = ttk.Progressbar(self, orient="horizontal", mode="determinate", length=280)
@@ -346,7 +364,8 @@ class MainWindow(tk.Tk):
         reference_folder = self.reference_folder_label.cget("text")
         parse_folder = self.parse_folder_label.cget("text")
         if os.path.isdir(reference_folder) and os.path.isdir(parse_folder):
-            main_parse(reference_folder, parse_folder, self)
+            parse_thread = threading.Thread(target=main_parse, args=(reference_folder, parse_folder, self))
+            parse_thread.start()  # This will run main_parse in a separate thread so GUI doesn't freeze
         else:
             print("Invalid folder selection")
     # Action to save the textbox to a file
