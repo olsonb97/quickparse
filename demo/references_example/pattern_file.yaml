@@ -3,7 +3,7 @@
 # DeviceName:  # Use device name from logs
 #   variableName: 'regexPattern'  # Use one () group in regex
 #
-# For multiple regex patterns per variable:
+# For multiple regex patterns per variable (parsed hierarchically):
 #   variableName:
 #     - 'pattern1'  # One () group
 #     - 'pattern2'  # One () group
@@ -13,5 +13,5 @@ C9200L:
     Version: 
     - 'Cisco IOS XE Software, Version (.*)'
     - 'Cisco IOS XE Software Version (.*)'
-    OS: 'IOS (.*)'
+    OS: '(IOS .*)'
 ...

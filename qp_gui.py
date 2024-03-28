@@ -43,6 +43,27 @@ def update_progress_bar(window, step, total_steps):
     progress = step / total_steps * 100
     window.update_progressbar(progress)
 
+# Build the final dictionaries and strings
+def build_report(detail_dict, files_without_devices, found_devices, scanned_files, counted_files, target_folder, reference_folder=None):
+    logging.debug('Serializing data...')
+    detail_dict = Quickparser.collapse(detail_dict)
+    brief_dict = {
+        "Completion Date": datetime.now().strftime(r'%I:%M %p - %B %d, %Y').lstrip("0"),
+        "Devices Found": list(found_devices),
+        "Devices Not Found": list(files_without_devices),
+        "Folder (Reference)": (reference_folder or None), # Optional
+        "Folder (Scanned)": target_folder,
+        "Total Deviations": len(Quickparser.leafify(detail_dict.get("Scanned Folder", {}).get("Deviations", {}))),
+        "Total Files Scanned": scanned_files,
+        "Total Files Found": counted_files,
+        "Verdict": ("FAIL" if (detail_dict.get("Scanned Folder", {}).get("Deviations") or files_without_devices or (scanned_files != counted_files)) else "PASS")
+    }
+    brief_dict = Quickparser.collapse(brief_dict)
+    detail_string = Quickparser.serialize(detail_dict, 'yaml')
+    brief_string = Quickparser.serialize(brief_dict, 'yaml')
+    final_string = "Detailed Report:\n\n" + detail_string + "\n" + ("-"* 100) + "\n\nBrief Report:\n\n" + brief_string + "\n" + ("-"* 100)
+    return final_string
+
 # Main function for parsing
 def main_parse(reference_folder_path, target_folder_path, window):
     logging.debug('Working...')
@@ -53,7 +74,7 @@ def main_parse(reference_folder_path, target_folder_path, window):
 
     # Get list of file paths
     if not (target_filepaths := get_list_of_files(target_folder_path, ('.txt', '.log'))):
-        raise ParsingError("Cancelled: No files in the target folder can be parsed.") # Cancel if no parsable files in the target folder
+        raise ParsingError("No files in the target folder can be parsed.") # Cancel if no parsable files in the target folder
     reference_filepaths = get_list_of_files(reference_folder_path, ('.txt', '.log'))
     
     # Get the total steps of the progress bar
@@ -61,7 +82,7 @@ def main_parse(reference_folder_path, target_folder_path, window):
     
     # Get other variables
     files_without_devices = {os.path.basename(file) for file in target_filepaths} # As files are parsed, they get removed from here
-    step_counter, scanned_files, found_devices, num_files_to_scan = 0, 0, set(), len(target_filepaths)
+    step_counter, scanned_files, found_devices, counted_files = 0, 0, set(), len(target_filepaths)
     detail_dict = {"Reference Folder": {}, "Scanned Folder": {"Matches": {}, "Deviations": {}}}
 
     # Find the pattern file
@@ -135,24 +156,15 @@ def main_parse(reference_folder_path, target_folder_path, window):
                 step_counter += 1
                 update_progress_bar(window, step_counter, total_steps)
 
-    # Build the final dictionaries and strings
-    logging.debug('Serializing data...')
-    detail_dict = Quickparser.collapse(detail_dict)
-    brief_dict = {
-        "Completion Date": datetime.now().strftime(r'%I:%M %p - %B %d, %Y').lstrip("0"),
-        "Devices Found": list(found_devices),
-        "Devices Not Found": list(files_without_devices),
-        "Folder (Reference)": reference_folder_path,
-        "Folder (Scanned)": target_folder_path,
-        "Total Deviations": len(Quickparser.leafify(detail_dict.get("Scanned Folder", {}).get("Deviations", {}))),
-        "Total Files Scanned": scanned_files,
-        "Total Files Found": num_files_to_scan,
-        "Verdict": ("FAIL" if (detail_dict.get("Scanned Folder", {}).get("Deviations") or files_without_devices or (scanned_files != num_files_to_scan)) else "PASS")
-    }
-    brief_dict = Quickparser.collapse(brief_dict)
-    detail_string = Quickparser.serialize(detail_dict, 'yaml')
-    brief_string = Quickparser.serialize(brief_dict, 'yaml')
-    final_string = "Detailed Report:\n\n" + detail_string + "\n" + ("-"* 100) + "\n\nBrief Report:\n\n" + brief_string + "\n" + ("-"* 100)
+    final_string = build_report(
+        detail_dict,
+        files_without_devices,
+        found_devices,
+        scanned_files,
+        counted_files,
+        target_folder_path,
+        reference_folder_path
+    )
 
     # Update Progress Bar
     update_progress_bar(window, 100, 100)
@@ -284,6 +296,7 @@ class MainWindow(tk.Tk):
         text_redirector = TextRedirector(self.text_box)
         sys.stdout = text_redirector
         sys.stderr = text_redirector
+        sys.tracebacklimit = 0
 
         # Set up logging to redirect to the text box
         text_redirector = TextRedirector(self.text_box)
@@ -304,8 +317,7 @@ class MainWindow(tk.Tk):
 
     # Action to choose a folder
     def folder_action(self, title, label):
-        folder_path = open_dialog(parent=self, dialog_type="folder", title=title)
-        if folder_path:
+        if folder_path := open_dialog(parent=self, dialog_type="folder", title=title):
             self.update_label(label, folder_path)
 
     # Action to parse the folders
@@ -319,8 +331,7 @@ class MainWindow(tk.Tk):
             print("Invalid folder selection")
     # Action to save the textbox to a file
     def save_action(self):
-        save_path = open_dialog(self, "save", [("Text File", "*.txt")], ".txt", title="Save as", initial_name="Quickparse_Report")
-        if save_path:
+        if save_path := open_dialog(self, "save", [("Text File", "*.txt")], ".txt", title="Save as", initial_name="Quickparse_Report"):
             text_content = self.text_box.get("1.0", tk.END)
             with open(save_path, 'w') as file:
                 file.write(text_content)
@@ -328,8 +339,7 @@ class MainWindow(tk.Tk):
 
     # Action to clear the textbox
     def clear_action(self):
-        choice = messagebox.askyesno(message="Clear contents?")
-        if choice:
+        if messagebox.askyesno(message="Clear contents?"):
             self.text_box.config(state='normal') 
             self.text_box.delete("1.0", tk.END)
             self.text_box.see(tk.END)
@@ -397,11 +407,9 @@ class MainWindow(tk.Tk):
 
     # Generate a new pattern file
     def generate_pattern_file(self, path):
-        okcancel = messagebox.askokcancel(title="Confirm", message=
-                                            "Generating a new file is not recommended. Add to an existing one if possible. One folder may only contain one pattern file.")
-        if okcancel:
-            save_path = open_dialog(parent=self, dialog_type="save", initial_dir=path, initial_name="pattern_file.yaml", filetypes=[("YAML", "*.yaml")], default_ext=".yaml")
-            if save_path:
+        if messagebox.askokcancel(title="Confirm", message=
+                                            "Generating a new file is not recommended. Add to an existing one if possible. One folder may only contain one pattern file."):
+            if save_path := open_dialog(parent=self, dialog_type="save", initial_dir=path, initial_name="pattern_file.yaml", filetypes=[("YAML", "*.yaml")], default_ext=".yaml"):
                 base_dir = sys.path[0]  # Directory where the script is located
                 source_pattern_file = os.path.join(base_dir, 'resources', 'pattern_file.yaml')
                 shutil.copy(source_pattern_file, save_path)
@@ -496,8 +504,7 @@ class MainWindow(tk.Tk):
 
     # Action to reset the config file
     def reset_action(self, window):
-        choice = messagebox.askyesno("Confirm", "Reset default reference folder?", parent=window)
-        if choice:
+        if messagebox.askyesno("Confirm", "Reset default reference folder?", parent=window):
             self.reset_config()
             self.update_label(self.reference_folder_label, self.default_reference_path)
             window.destroy()
