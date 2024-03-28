@@ -224,12 +224,12 @@ class MainWindow(tk.Tk):
     # Set the GUI elements
     def configure_ui(self):
         self.title("Quickparse")
-        self.configure(background="#454444")
+        self.configure(background="black")
         self.center_window(1200, 650)
         self.fonts = {
-            'button': ('Nirmala UI', 9),
-            'label': ('Nirmala UI', 8, 'bold'),
-            'text': ('Consolas', 10, 'bold')
+            'button': ('Nirmala UI', 10),
+            'label': ('Nirmala UI', 10),
+            'text': ('Consolas', 10)
         }
 
     # Get the icon file
@@ -274,7 +274,7 @@ class MainWindow(tk.Tk):
         self.clear_button = self.create_button("Clear", self.clear_action, 1, 3)
 
     def create_button(self, text, command, row, col):
-        button = tk.Button(self, text=text, command=command, bg="white", fg="black", font=self.fonts['button'])
+        button = tk.Button(self, text=text, command=command, bg="black", fg="white", activebackground="black", activeforeground="white", font=self.fonts['button'], border=3)
         button.grid(row=row, column=col, padx=6, pady=6)
         return button
 
@@ -283,7 +283,7 @@ class MainWindow(tk.Tk):
         self.parse_folder_label = self.create_label("No folder selected", 1, 1)
 
     def create_label(self, text, row, col):
-        label = tk.Label(self, text=text, bg='#454444', fg='white', font=self.fonts['label'])
+        label = tk.Label(self, text=text, bg='black', fg='white', font=self.fonts['label'])
         label.grid(row=row, column=col, padx=5, pady=5)
         return label
 
@@ -433,8 +433,8 @@ class MainWindow(tk.Tk):
         window.geometry(f'{width}x{height}+{x}+{y}')
         window.minsize(600, 100)
         window.maxsize(1400, 100)
-        window.configure(bg="#454444")
-        window.button_frame = tk.Frame(window, bg="#454444")
+        window.configure(bg="black")
+        window.button_frame = tk.Frame(window, bg="black")
         window.button_frame.grid(row=2, column=0, columnspan=2, pady=5)
         try:
             window.iconbitmap(self.icon_path)
@@ -444,7 +444,7 @@ class MainWindow(tk.Tk):
     # Create the settings window widgets
     def populate_settings_widgets(self, window):
         # Label for displaying the selected default reference folder
-        lbl_reference_path = tk.Label(window, text=self.default_reference_path, bg="#454444", fg="white", font=self.fonts['label'])
+        lbl_reference_path = tk.Label(window, text=self.default_reference_path, bg="black", fg="white", font=self.fonts['label'])
         lbl_reference_path.grid(row=0, column=1, padx=10, pady=10, sticky="w")
 
         # Button for choosing the default reference folder
@@ -454,8 +454,13 @@ class MainWindow(tk.Tk):
                                   command= lambda: self.update_label(lbl_reference_path,
                                                                      open_dialog(window,
                                                                                       "folder",
-                                                                                      title="Choose Default Reference Folder")))
-        btn_reference_path.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
+                                                                                      title="Choose Default Reference Folder")),
+                                                                                      bg="black",
+                                                                                      fg="white",
+                                                                                      activebackground="black",
+                                                                                      activeforeground="white",
+                                                                                      border=3)
+        btn_reference_path.grid(row=0, column=0, padx=5, pady=5, sticky="ew")
 
         # Save and Reset buttons
 
@@ -465,24 +470,30 @@ class MainWindow(tk.Tk):
         self.create_settings_button(window.button_frame, "Help", lambda: self.show_help(window))
 
     def show_help(self, window):
-        help_window = tk.Toplevel(window)
+        help_window = tk.Toplevel(window, background="black")
         help_window.withdraw()
-        help_window.iconbitmap(self.icon_path)
+        try:
+            help_window.iconbitmap(self.icon_path)
+        except:
+            pass
         help_window.title("Help")
         help_window.resizable(False, False)
         
         # Set the help text
         help_text = """
-        This app manages a local config file storing the default reference folder path,
-        which should contain reference log files and one pattern file. A new file can 
-        be generated in Settings. If no config file exists, the app creates one.
+This app manages a local config file storing the default
+reference folder path, which should contain reference
+log files and one pattern file. If no config file exists,
+the app creates one. A new pattern file can be generated
+in Settings. It has instructions on how to format it.
 
-        Save data path: {config_path}
-        -------------------------------------------------------------------------------
-        Caution: Only alter this path to delete it.
-        """.format(config_path=self.config_path)
+Save data:
+    {config_path}
 
-        help_label = tk.Label(help_window, text=help_text, wraplength=600, justify="left")
+*CAUTION: Only alter this path to delete it*
+""".format(config_path=self.config_path)
+
+        help_label = tk.Label(help_window, text=help_text, wraplength=300, justify="left", bg="black", fg="white")
         help_label.pack(padx=5, pady=5)
 
         # Center the window on the screen
@@ -499,7 +510,7 @@ class MainWindow(tk.Tk):
 
     # Template for settings button creation
     def create_settings_button(self, frame, text, command):
-        button = tk.Button(frame, text=text, command=command, bg="white", fg="black", font=self.fonts['button'])
+        button = tk.Button(frame, text=text, command=command, bg="black", fg="white", activebackground="black", activeforeground="white", font=self.fonts['button'], border=3)
         button.pack(side="left", padx=10)
 
     # Action to reset the config file
