@@ -224,7 +224,7 @@ class MainWindow(tk.Tk):
     # Set the GUI elements
     def configure_ui(self):
         self.title("Quickparse")
-        self.configure(background="black")
+        self.configure(background="#262626")
         self.center_window(1200, 650)
         self.fonts = {
             'button': ('Nirmala UI', 10),
@@ -283,7 +283,7 @@ class MainWindow(tk.Tk):
         self.parse_folder_label = self.create_label("No folder selected", 1, 1)
 
     def create_label(self, text, row, col):
-        label = tk.Label(self, text=text, bg='black', fg='white', font=self.fonts['label'])
+        label = tk.Label(self, text=text, bg='black', fg='white', font=self.fonts['label'], relief='groove')
         label.grid(row=row, column=col, padx=5, pady=5)
         return label
 
