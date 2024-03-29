@@ -16,16 +16,13 @@ This lightweight tool parses log files against a reference to detect deviations.
 - **Reference Folder**:
     - At least one log file.
     - One YAML pattern file.
-        - Keys must be locator strings and leaf values must be regex strings.
-        - Regex strings must have exactly one () group for simple parsing.
-        - The first layer of YAML keys must occur in the text for location.
 
 ### YAML Patterns
 - Define device, OS, or other locator variables with minimal regex patterns.
-- Keys must be locator strings and leaf values must be regex strings.
-- Regex strings must have exactly one () group for simple parsing.
-- String sequences parse in hierarchical order
-- The first layer of YAML keys must occur in the text for location.
+    - This key is used as a locator string for matching values to files.
+    - Values must be regex strings that will parse each file that matches
+    - Regex strings must have exactly one () group for simple parsing.
+    - String sequences parse in hierarchical order
 
 ```yaml
 C9200L:
