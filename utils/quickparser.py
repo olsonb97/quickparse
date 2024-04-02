@@ -3,7 +3,7 @@ import yaml
 import json
 import logging
 from typing import IO, Optional, Literal
-from .errors import QuickparserError
+from .misc_classes import QuickparserError
 
 class Quickparser:
     ext = '.yaml'
@@ -105,7 +105,7 @@ class Quickparser:
                         match = re.search(value, input_text, re.MULTILINE)
                     
                     if match:
-                        current_parsed_dict[key] = match.group(1).strip()  # Use entire match if specific group isn't specified
+                        current_parsed_dict[key] = match.group().strip()  # Use entire match if specific group isn't specified
                     else:
                         if collapse:
                             current_parsed_dict[key] = None
