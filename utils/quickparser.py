@@ -247,7 +247,7 @@ class Quickparser:
             return match.group()
         else:
             return None
-        
+    
     @staticmethod
     def collapse(dictionary: dict) -> dict:
         """

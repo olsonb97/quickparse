@@ -49,8 +49,10 @@ def get_files_devices_dict(filepaths, pattern_file):
         thread.join()
     return files_devices
 
-def get_parser_objects(device_files, pattern_file):
-    devices = set(device_files.values())
+def get_parser_objects(pattern_file, *args):
+    devices = set()
+    for arg in args:
+        devices.update(set(arg.values()))
     parser_objects = {device: Quickparser(device, pattern_file) for device in devices}
     return parser_objects
 
@@ -82,6 +84,35 @@ def parse_files(device_files, parsers, reference=False):
         thread.join()
     return parsed_files
 
+def compare_dict(ref_dict, targ_dict, filename, device):
+    basename = os.path.basename(filename)
+    matches, mismatches = Quickparser.compare(list(ref_dict.values())[0], targ_dict)
+    return device, basename, matches, mismatches, 'Matches', 'Deviations'
+
+def compare_dicts(ref_files_dict, targ_files_dict):
+    detail_dict = {"Reference Folder": ref_files_dict, "Scanned Folder": {"Matches": {}, "Deviations": {}, "Device Not Found": {}}}
+    
+    args_list = []
+    for device, files in targ_files_dict.items():
+        if device != "Device Not Found":
+            for filename, targ_dict in files.items():
+                args_list.append((ref_files_dict.get(device, {}), targ_dict, filename, device))
+        else:
+            detail_dict["Scanned Folder"]["Device Not Found"].update(files)
+    
+    # Replace threading with multiprocessing.Pool
+    with Pool(processes=multiprocessing.cpu_count()) as pool:
+        results = pool.starmap(compare_dict, args_list)
+    
+    # Apply changes to detail_dict
+    for device, basename, matches, mismatches, match_key, deviation_key in results:
+        detail_dict["Scanned Folder"][match_key].setdefault(device, {})
+        detail_dict["Scanned Folder"][deviation_key].setdefault(device, {})
+        detail_dict["Scanned Folder"][match_key][device][basename] = matches
+        detail_dict["Scanned Folder"][deviation_key][device][basename] = mismatches
+
+    return detail_dict
+
 # Build the final dictionaries and strings
 def build_report(detail_dict, files_without_devices, found_devices, scanned_files, counted_files, target_folder, reference_folder=None):
     detail_dict = Quickparser.collapse(detail_dict)
@@ -102,32 +133,6 @@ def build_report(detail_dict, files_without_devices, found_devices, scanned_file
     final_string = "Detailed Report:\n\n" + detail_string + "\n" + ("-"* 100) + "\n\nBrief Report:\n\n" + brief_string + "\n" + ("-"* 100)
     return final_string
 
-def compare_dict(ref_dict, targ_dict, filename, device):
-    basename = os.path.basename(filename)
-    matches, mismatches = Quickparser.compare(list(ref_dict.values())[0], targ_dict)
-    return device, basename, matches, mismatches, 'Matches', 'Deviations'
-
-def compare_dicts(ref_files_dict, targ_files_dict):
-    detail_dict = {"Reference Folder": ref_files_dict, "Scanned Folder": {"Matches": {}, "Deviations": {}}}
-    
-    args_list = []
-    for device, files in targ_files_dict.items():
-        for filename, targ_dict in files.items():
-            args_list.append((ref_files_dict.get(device, {}), targ_dict, filename, device))
-    
-    # Replace threading with multiprocessing.Pool
-    with Pool(processes=multiprocessing.cpu_count()) as pool:
-        results = pool.starmap(compare_dict, args_list)
-    
-    # Apply changes to detail_dict
-    for device, basename, matches, mismatches, match_key, deviation_key in results:
-        detail_dict["Scanned Folder"][match_key].setdefault(device, {})
-        detail_dict["Scanned Folder"][deviation_key].setdefault(device, {})
-        detail_dict["Scanned Folder"][match_key][device][basename] = matches
-        detail_dict["Scanned Folder"][deviation_key][device][basename] = mismatches
-
-    return detail_dict
-
 # Main function for parsing
 def main_parse(reference_folder_path, target_folder_path, window):
     logging.debug('Working...')
@@ -147,23 +152,28 @@ def main_parse(reference_folder_path, target_folder_path, window):
     # Find the pattern file
     if not (pattern_file := glob.glob(os.path.join(reference_folder_path, "*.yaml"))[0]): # Cancel if pattern file is None
         raise ParsingError(f"No pattern file found in Reference Folder: {reference_folder_path}")
-    logging.info(f'Discovered Pattern File: {os.path.basename(pattern_file)}')
+    logging.debug(f'Discovered Pattern File: {os.path.basename(pattern_file)}')
 
-    reference_device_files = get_files_devices_dict(reference_filepaths, pattern_file)
-    logging.debug(f'Discovered devices from reference files: {", ".join(set(reference_device_files.values()))}')
-    target_device_files = get_files_devices_dict(target_filepaths, pattern_file)
-    logging.debug(f'Discovered devices from target files: {", ".join(set(target_device_files.values()))}')
-    
+    # Create dictionaries in the form of filepath: device
+    reference_files_devices = get_files_devices_dict(reference_filepaths, pattern_file)
+    logging.debug(f'Discovered devices from reference files: {", ".join(set(reference_files_devices.values()))}')
+    target_files_devices = get_files_devices_dict(target_filepaths, pattern_file)
+    logging.debug(f'Discovered devices from target files: {", ".join(set(str(device) for device in target_files_devices.values()))}')
+
+    # Create parsers for each device discovered in dictionaries of device: parser
     logging.debug('Creating parser objects...')
-    parsers = get_parser_objects(reference_device_files, pattern_file)
+    parsers = get_parser_objects(pattern_file, reference_files_devices, target_files_devices)
 
+    # Create dictionaries in the form of {device: {filename: parsed_dict}}
     logging.debug('Parsing Reference Files...')
-    parsed_reference_dict = parse_files(reference_device_files, parsers, reference=True)
+    parsed_reference_dict = parse_files(reference_files_devices, parsers, reference=True)
     logging.debug('Parsing Target Files...')
-    parsed_target_dict = parse_files(target_device_files, parsers, reference=False)
+    parsed_target_dict = parse_files(target_files_devices, parsers, reference=False)
 
+    # Compare the reference and target into a combined dictionary
     logging.debug('Building Data Structure...')
     final_dict = compare_dicts(parsed_reference_dict, parsed_target_dict)
     logging.debug('Cleaning Data Structure...')
     final_dict = Quickparser.collapse(final_dict)
+    logging.debug('Finished')
     print(Quickparser.serialize(final_dict, 'yaml'))
