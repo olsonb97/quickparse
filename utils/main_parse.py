@@ -33,19 +33,23 @@ def update_progress_bar(window, step, total_steps):
     window.update_progressbar(progress)
 
 # Find a device in a file
-def find_device_in_file(semaphore, file_name, pattern_file, device_files):
+def find_device_in_file(semaphore, file_name, pattern_file, files_devices, reference):
     with semaphore:
         with open(file_name, 'r') as f:
             device = Quickparser.discover(f.read(), pattern_file)
-            device_files[file_name] = device
+            if reference:
+                for found_file, found_device in files_devices.items():
+                    if found_device == device:
+                        raise ParsingError(f"Two reference files for the same device found:\n{found_file}\n{os.path.basename(file_name)}")
+            files_devices[file_name] = device
 
 # Map devices to filenames
-def get_files_devices_dict(filepaths, pattern_file):
+def get_files_devices_dict(filepaths, pattern_file, reference=False):
     files_devices = {}
     semaphore = Semaphore(multiprocessing.cpu_count()*2)
     threads = set()
     for file_name in filepaths:
-        thread = Thread(target=find_device_in_file, args=(semaphore, file_name, pattern_file, files_devices))
+        thread = Thread(target=find_device_in_file, args=(semaphore, file_name, pattern_file, files_devices, reference))
         threads.add(thread)
         thread.start()
     for thread in threads:
@@ -61,17 +65,22 @@ def get_parser_objects(pattern_file, *args):
     return parser_objects
 
 # Parse a single file
-def parse_file(semaphore, file_path, parser, collapse, parsed_files):
+def parse_file(semaphore, file_path, parser, collapse, parsed_files, reference):
     with semaphore:
-        if parser:
-            with open(file_path, 'r') as f:
-                basename = os.path.basename(file_path)
-                if (parsed_dict := parser.parse(f.read(), collapse)):
-                    parsed_files.setdefault(str(parser.device), {})
-                    parsed_files[str(parser.device)].update({basename: parsed_dict})
+        with open(file_path, 'r') as f:
+            basename = os.path.basename(file_path)
+            if (parsed_dict := parser.parse(f.read(), collapse)):
+                if reference:
+                    for key, val in parsed_dict.items():
+                        if val == "NOT FOUND":
+                            raise ParsingError(f"Failed to parse reference file: {basename} variable: ({key})")
+                parsed_files.setdefault(str(parser.device), {})
+                parsed_files[str(parser.device)].update({basename: parsed_dict})
+            elif reference:
+                raise ParsingError(f"Failed to parse reference file: {basename}. Reference File returned nothing.")
 
 # Parse files in threads
-def parse_files(device_files, parsers, reference=False):
+def parse_files(device_files, parsers, reference=False, collapse=False):
     parsed_files = {}
     semaphore = Semaphore(multiprocessing.cpu_count()*2)
     threads = set()
@@ -83,9 +92,10 @@ def parse_files(device_files, parsers, reference=False):
             parsed_files.setdefault("Device Not Found", {})
             parsed_files["Device Not Found"].update({basename: "Not Found"})
             continue
-        thread = Thread(target=parse_file, args=(semaphore, file_path, parsers.get(device), False, parsed_files))
-        threads.add(thread)
-        thread.start()
+        if (device_type := parsers.get(device)):
+            thread = Thread(target=parse_file, args=(semaphore, file_path, device_type, collapse, parsed_files, reference))
+            threads.add(thread)
+            thread.start()
     for thread in threads:
         thread.join()
     return parsed_files
@@ -180,7 +190,7 @@ def main_parse(reference_folder_path, target_folder_path, window):
     logging.debug(f'Discovered Pattern File: {os.path.basename(pattern_file)}')
 
     # Create dictionaries in the form of filepath: device
-    reference_files_devices = get_files_devices_dict(reference_filepaths, pattern_file)
+    reference_files_devices = get_files_devices_dict(reference_filepaths, pattern_file, reference=True)
     logging.debug(f'Discovered devices from reference files: {", ".join(set(reference_files_devices.values()))}')
     target_files_devices = get_files_devices_dict(target_filepaths, pattern_file)
     logging.debug(f'Discovered devices from target files: {", ".join(set(str(device) for device in target_files_devices.values()))}')
@@ -191,22 +201,22 @@ def main_parse(reference_folder_path, target_folder_path, window):
 
     # Create dictionaries in the form of {device: {filename: parsed_dict}}
     logging.debug('Parsing Reference Files...')
-    parsed_reference_dict = parse_files(reference_files_devices, parsers, reference=True)
+    parsed_reference_dict = parse_files(reference_files_devices, parsers, reference=True, collapse=False)
     logging.debug('Parsing Target Files...')
-    parsed_target_dict = parse_files(target_files_devices, parsers, reference=False)
+    parsed_target_dict = parse_files(target_files_devices, parsers, reference=False, collapse=True)
 
     # Compare the reference and target into a combined dictionary
     logging.debug('Building Data Structure...')
     final_dict = compare_dicts(parsed_reference_dict, parsed_target_dict)
     logging.debug('Cleaning Data Structure...')
     final_dict = Quickparser.collapse(final_dict)
-    logging.debug('Finished')
 
     devices = list(parsers.keys())
     files_without_devices = list(final_dict.get("Scanned Folder", {}).get("Device Not Found", {}))
     counted_files = len(target_filepaths)
     scanned_files = sum(len(filenames) for filenames in parsed_target_dict.values())
     num_deviations = len(final_dict.get("Scanned Folder", {}).get("Deviations", {}))
-    
+    logging.debug('Building Report...')
     report = build_report(final_dict, files_without_devices, devices, scanned_files, counted_files, num_deviations, target_folder_path, reference_folder_path)
+    logging.debug('Finished')
     print(report)
