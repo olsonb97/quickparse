@@ -246,8 +246,8 @@ class Quickparser:
         if match := devices_pattern.search(input_text):
             return match.group()
         else:
-            raise QuickparserError(f"No device discovered in {pattern_file}")
-    
+            return None
+        
     @staticmethod
     def collapse(dictionary: dict) -> dict:
         """
