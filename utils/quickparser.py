@@ -216,7 +216,7 @@ class Quickparser:
             raise QuickparserError(f"Failed to convert data to {ext} string: {e}")
         
     @staticmethod
-    def discover(input_text: str, pattern_file: str) -> tuple[str, str]:
+    def discover(input_text: str, pattern: str) -> tuple[str, str]:
         """
         Searches through the input text to find a device from the pattern file.
 
@@ -231,19 +231,9 @@ class Quickparser:
             QuickparserError: If pattern file is Falsy
             QuickparserError: If no device is found, error.
         """
-        
-        # Load device names directly into a list of leaf nodes
-        with open(pattern_file, 'r') as file:
-            pattern_dict = yaml.safe_load(file)
-
-        if not pattern_dict:
-            raise QuickparserError("Invalid pattern file")
-        
-        # Compile a regular expression that matches any of the devices
-        devices_pattern = re.compile('|'.join(re.escape(device) for device in pattern_dict))
 
         # Search for the first occurrence of any device in the input text
-        if match := devices_pattern.search(input_text):
+        if match := pattern.search(input_text):
             return match.group()
         else:
             return None
