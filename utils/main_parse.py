@@ -55,8 +55,7 @@ def get_files_devices_dict(filepaths, pattern, reference=False):
             futures.append(executor.submit(find_device_in_file, file_name, pattern, files_devices, discovered_devices, reference))
         for future in futures:
             future.result()
-
-    return files_devices
+    return files_devices, discovered_devices
 
 # Instantiate parsers for any discovered devices
 def get_parser_objects(pattern_file, devices):
@@ -102,7 +101,7 @@ def compare_dict(ref_dict, targ_dict, filename, device):
         ref_value = list(ref_dict.values())[0]
         matches, mismatches = Quickparser.compare(ref_value, targ_dict)
     else:
-        matches, mismatches = [], []  # Or appropriate default values
+        matches, mismatches = {}, {}
     return device, basename, matches, mismatches, 'Matches', 'Deviations'
 
 def compare_dicts(ref_files_dict, targ_files_dict):
@@ -123,20 +122,25 @@ def compare_dicts(ref_files_dict, targ_files_dict):
             detail_dict["Scanned Folder"]["Device Not Found"].update(files)
 
     return detail_dict
+
 # Build the final dictionaries and strings
-def build_report(detail_dict, files_without_devices, found_devices, scanned_files, counted_files, num_deviations, target_folder, reference_folder, start_time):
+def build_report(detail_dict, found_devices, scanned_files, counted_files, num_deviations, target_folder, reference_folder, files_without_devices, start_time):
     detail_dict = Quickparser.collapse(detail_dict)
+    errors = {
+        "Files Where Device Not Found": files_without_devices
+    }
+    errors = Quickparser.collapse(errors)
     brief_dict = {
         "Completion Date": datetime.now().strftime(r'%I:%M %p - %B %d, %Y').lstrip("0"),
         "Devices Found": found_devices,
-        "Devices Not Found": files_without_devices,
+        "Errors": errors,
         "Folder (Reference)": reference_folder,
         "Folder (Scanned)": target_folder,
         "Total Deviations": num_deviations,
         "Total Files Scanned": scanned_files,
         "Total Files Found": counted_files,
         "Total Time": f"{(time.perf_counter() - start_time):.3f} seconds",
-        "Verdict": ("FAIL" if (num_deviations or files_without_devices or (scanned_files != counted_files)) else "PASS")
+        "Verdict": ("FAIL" if (num_deviations or errors or (scanned_files != counted_files)) else "PASS")
     }
     brief_dict = Quickparser.collapse(brief_dict)
     detail_string = Quickparser.serialize(detail_dict, 'yaml')
@@ -171,16 +175,15 @@ def main_parse(reference_folder_path, target_folder_path, window):
 
     # Create dictionaries in the form of filepath: device
     logging.debug('Discovering')
-    reference_files_devices= get_files_devices_dict(reference_filepaths, devices_pattern, reference=True)
+    reference_files_devices, ref_devices = get_files_devices_dict(reference_filepaths, devices_pattern, reference=True)
     logging.debug(f'Discovered devices from reference files: {", ".join(set(reference_files_devices.values()))}')
     update_progress_bar(window, 1, total_steps)
-    target_files_devices= get_files_devices_dict(target_filepaths, devices_pattern)
+    target_files_devices, targ_devices = get_files_devices_dict(target_filepaths, devices_pattern)
     logging.debug(f'Discovered devices from target files: {", ".join(set(str(device) for device in target_files_devices.values()))}')
     update_progress_bar(window, 2, total_steps)
 
     # Create parsers for each device discovered in dictionaries of device: parser
     logging.debug('Creating parser objects...')
-    ref_devices = set(reference_files_devices.values())
     parsers = get_parser_objects(pattern_file, ref_devices)
 
     # Create dictionaries in the form of {device: {filename: parsed_dict}}
@@ -200,15 +203,16 @@ def main_parse(reference_folder_path, target_folder_path, window):
     logging.debug('Cleaning Data Structure...')
     final_dict = Quickparser.collapse(final_dict)
     update_progress_bar(window, 6, total_steps)
-    devices = [device for device in parsers.keys() if device is not None]
-    files_without_devices = list(final_dict.get("Scanned Folder", {}).get("Device Not Found", {}))
+    targ_devices.discard(None)
+    devices = list(targ_devices)
+    files_without_devices = len(final_dict.get("Scanned Folder", {}).get("Device Not Found", {}))
     counted_files = len(target_filepaths)
     scanned_files = sum(len(filenames) for filenames in parsed_target_dict.values())
     num_deviations = len(Quickparser.leafify(final_dict.get("Scanned Folder", {}).get("Deviations", {})))
 
     # Build the Brief Report
     logging.debug('Building Report...')
-    report = build_report(final_dict, files_without_devices, devices, scanned_files, counted_files, num_deviations, target_folder_path, reference_folder_path, start_time)
+    report = build_report(final_dict, devices, scanned_files, counted_files, num_deviations, target_folder_path, reference_folder_path, files_without_devices, start_time)
     update_progress_bar(window, 7, total_steps)
     logging.debug('Finished')
     print(report)

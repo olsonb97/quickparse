@@ -271,15 +271,15 @@ class MainWindow(tk.Tk):
 
     # Set up the settings window
     def configure_settings_window(self, window):
-        width = 800
+        width = 1000
         height = 100
         x = (self.screen_width - width) // 2
         y = (self.screen_height - height) // 2
         window.geometry(f'{width}x{height}+{x}+{y}')
         window.minsize(600, 100)
         window.maxsize(1400, 100)
-        window.configure(bg="black")
-        window.button_frame = tk.Frame(window, bg="black")
+        window.configure(bg="#262626")
+        window.button_frame = tk.Frame(window, bg="#262626")
         window.button_frame.grid(row=2, column=0, columnspan=2, pady=5)
         try:
             window.iconbitmap(self.icon_path)
@@ -289,7 +289,7 @@ class MainWindow(tk.Tk):
     # Create the settings window widgets
     def populate_settings_widgets(self, window):
         # Label for displaying the selected default reference folder
-        lbl_reference_path = tk.Label(window, text=self.default_reference_path, bg="black", fg="white", font=self.fonts['label'])
+        lbl_reference_path = tk.Label(window, text=self.default_reference_path, bg="black", fg="white", font=self.fonts['label'], relief='groove')
         lbl_reference_path.grid(row=0, column=1, padx=10, pady=10, sticky="w")
 
         # Button for choosing the default reference folder
@@ -315,7 +315,7 @@ class MainWindow(tk.Tk):
         self.create_settings_button(window.button_frame, "Help", lambda: self.show_help(window))
 
     def show_help(self, window):
-        help_window = tk.Toplevel(window, background="black")
+        help_window = tk.Toplevel(window, background="#262626")
         help_window.withdraw()
         try:
             help_window.iconbitmap(self.icon_path)
@@ -338,8 +338,8 @@ Save data:
 *CAUTION: Only alter this path to delete it*
 """.format(config_path=self.config_path)
 
-        help_label = tk.Label(help_window, text=help_text, wraplength=300, justify="left", bg="black", fg="white")
-        help_label.pack(padx=5, pady=5)
+        help_label = tk.Label(help_window, text=help_text, wraplength=400, justify="left", bg="black", fg="white", font=self.fonts['label'], relief='groove')
+        help_label.pack(padx=10, pady=10)
 
         # Center the window on the screen
         help_window.update_idletasks()
