@@ -9,6 +9,15 @@
 #     - 'pattern2'  # One () group
 
 ---
+C9300:
+    Version: 
+    - 'Cisco IOS XE Software, Version (.*)'
+    - 'Cisco IOS XE Software Version (.*)'
+    OS: '(IOS .*)'
+Cisco 3650:
+    Version: 'Cisco IOS XE Software, Version (.*)'
+Nexus 9k:
+    Version: "NXOS Version: (.*)"
 C9200L:
     Version: 
     - 'Cisco IOS XE Software, Version (.*)'

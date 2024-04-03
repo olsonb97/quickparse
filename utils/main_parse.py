@@ -38,6 +38,8 @@ def update_progress_bar(window, step, total_steps):
 def find_device_in_file(file_name, pattern, files_devices, discovered_devices, reference):
     with open(file_name, 'r') as f:
         device = Quickparser.discover(f.read(), pattern)
+    if reference and not device:
+        raise ParsingError(f"No device found in reference file: {file_name}")
     if reference and (device in discovered_devices):
         raise ParsingError(f"Duplicate reference file for device found: {device}")
     discovered_devices.add(device)
@@ -54,13 +56,10 @@ def get_files_devices_dict(filepaths, pattern, reference=False):
         for future in futures:
             future.result()
 
-    return files_devices, discovered_devices
+    return files_devices
 
 # Instantiate parsers for any discovered devices
-def get_parser_objects(pattern_file, *args):
-    devices = set()
-    for arg in args:
-        devices.update(set(arg.values()))
+def get_parser_objects(pattern_file, devices):
     parser_objects = {device: Quickparser(device, pattern_file) for device in devices}
     return parser_objects
 
@@ -71,7 +70,7 @@ def parse_file(file_path, parser, collapse, reference):
         parsed_dict = parser.parse(f.read(), collapse)
         if parsed_dict:
             if reference and any(val == "NOT FOUND" for val in parsed_dict.values()):
-                raise ParsingError(f"Failed to parse reference file: {basename}")
+                raise ParsingError(f"Failed to parse reference file: {basename}. Regex failed to parse.")
             return {str(parser.device): {basename: parsed_dict}}
         elif reference:
             raise ParsingError(f"Failed to parse reference file: {basename}. Reference File returned nothing.")
@@ -98,51 +97,32 @@ def parse_files(device_files, parsers, reference=False, collapse=False):
 # Function to compare a single ref_dict to a targ_dict for matches or deviations
 def compare_dict(ref_dict, targ_dict, filename, device):
     basename = os.path.basename(filename)
-    matches, mismatches = Quickparser.compare(list(ref_dict.values())[0], targ_dict)
+    # Check if ref_dict is not empty before accessing the first element
+    if ref_dict:
+        ref_value = list(ref_dict.values())[0]
+        matches, mismatches = Quickparser.compare(ref_value, targ_dict)
+    else:
+        matches, mismatches = [], []  # Or appropriate default values
     return device, basename, matches, mismatches, 'Matches', 'Deviations'
 
-# Function to process a batch of comparisons
-def process_batch(batch):
-    results = []
-    for ref_dict, targ_dict, filename, device in batch:
-        results.append(compare_dict(ref_dict, targ_dict, filename, device))
-    return results
-
-# Main function to compare dictionaries with batching and multiprocessing
 def compare_dicts(ref_files_dict, targ_files_dict):
     detail_dict = {"Reference Folder": ref_files_dict, "Scanned Folder": {"Matches": {}, "Deviations": {}, "Device Not Found": {}}}
     
-    args_list = []
     for device, files in targ_files_dict.items():
         if device != "Device Not Found":
             for filename, targ_dict in files.items():
-                args_list.append((ref_files_dict.get(device, {}), targ_dict, filename, device))
+                ref_dict = ref_files_dict.get(device, {})
+                device, basename, matches, mismatches, match_key, deviation_key = compare_dict(ref_dict, targ_dict, filename, device)
+                
+                # Update detail_dict with results
+                detail_dict["Scanned Folder"][match_key].setdefault(device, {})
+                detail_dict["Scanned Folder"][deviation_key].setdefault(device, {})
+                detail_dict["Scanned Folder"][match_key][device][basename] = matches
+                detail_dict["Scanned Folder"][deviation_key][device][basename] = mismatches
         else:
             detail_dict["Scanned Folder"]["Device Not Found"].update(files)
 
-    # Determine batch size based on the number of available CPU cores
-    num_cores = multiprocessing.cpu_count()
-    batch_size = max(1, len(args_list) // num_cores)
-
-    # Create batches
-    batches = [args_list[i:i + batch_size] for i in range(0, len(args_list), batch_size)]
-
-    # Process batches in parallel
-    with Pool(processes=num_cores) as pool:
-        batch_results = pool.map(process_batch, batches)
-
-    # Flatten the results from each batch
-    results = [item for sublist in batch_results for item in sublist]
-
-    # Update detail_dict with results from all batches
-    for device, basename, matches, mismatches, match_key, deviation_key in results:
-        detail_dict["Scanned Folder"][match_key].setdefault(device, {})
-        detail_dict["Scanned Folder"][deviation_key].setdefault(device, {})
-        detail_dict["Scanned Folder"][match_key][device][basename] = matches
-        detail_dict["Scanned Folder"][deviation_key][device][basename] = mismatches
-
     return detail_dict
-
 # Build the final dictionaries and strings
 def build_report(detail_dict, files_without_devices, found_devices, scanned_files, counted_files, num_deviations, target_folder, reference_folder, start_time):
     detail_dict = Quickparser.collapse(detail_dict)
@@ -191,23 +171,24 @@ def main_parse(reference_folder_path, target_folder_path, window):
 
     # Create dictionaries in the form of filepath: device
     logging.debug('Discovering')
-    reference_files_devices, reference_devices = get_files_devices_dict(reference_filepaths, devices_pattern, reference=True)
+    reference_files_devices= get_files_devices_dict(reference_filepaths, devices_pattern, reference=True)
     logging.debug(f'Discovered devices from reference files: {", ".join(set(reference_files_devices.values()))}')
     update_progress_bar(window, 1, total_steps)
-    target_files_devices, target_devices = get_files_devices_dict(target_filepaths, devices_pattern)
+    target_files_devices= get_files_devices_dict(target_filepaths, devices_pattern)
     logging.debug(f'Discovered devices from target files: {", ".join(set(str(device) for device in target_files_devices.values()))}')
     update_progress_bar(window, 2, total_steps)
 
     # Create parsers for each device discovered in dictionaries of device: parser
     logging.debug('Creating parser objects...')
-    parsers = get_parser_objects(pattern_file, target_files_devices)
+    ref_devices = set(reference_files_devices.values())
+    parsers = get_parser_objects(pattern_file, ref_devices)
 
     # Create dictionaries in the form of {device: {filename: parsed_dict}}
     logging.debug('Parsing Reference Files...')
     parsed_reference_dict = parse_files(reference_files_devices, parsers, reference=True, collapse=False)
     update_progress_bar(window, 3, total_steps)
     logging.debug('Parsing Target Files...')
-    parsed_target_dict = parse_files(target_files_devices, parsers, reference=False, collapse=True)
+    parsed_target_dict = parse_files(target_files_devices, parsers, reference=False, collapse=False)
     update_progress_bar(window, 4, total_steps)
 
     # Compare the reference and target into a combined dictionary
