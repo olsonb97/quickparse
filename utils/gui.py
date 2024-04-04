@@ -176,7 +176,7 @@ class MainWindow(tk.Tk):
             print("Invalid folder selection")
     # Action to save the textbox to a file
     def save_action(self):
-        if save_path := self.open_dialog(self, "save", [("Text File", "*.txt")], ".txt", title="Save as", initial_name="Quickparse_Report"):
+        if save_path := self.open_dialog("save", [("Text File", "*.txt")], ".txt", title="Save as", initial_name="Quickparse_Report"):
             text_content = self.text_box.get("1.0", tk.END)
             with open(save_path, 'w') as file:
                 file.write(text_content)
@@ -268,6 +268,8 @@ class MainWindow(tk.Tk):
         self.populate_settings_widgets(settings_window)
         settings_window.grid_rowconfigure(2, weight=1)
         settings_window.grid_columnconfigure(1, weight=1)
+        settings_window.transient(self)
+        settings_window.grab_set()
 
     # Set up the settings window
     def configure_settings_window(self, window):
@@ -297,8 +299,7 @@ class MainWindow(tk.Tk):
                                   text="Choose Default Reference Folder",
                                   font=self.fonts['button'],
                                   command= lambda: self.update_label(lbl_reference_path,
-                                                                     self.open_dialog(window,
-                                                                                      "folder",
+                                                                     self.open_dialog("folder",
                                                                                       title="Choose Default Reference Folder")),
                                                                                       bg="black",
                                                                                       fg="white",
@@ -308,7 +309,6 @@ class MainWindow(tk.Tk):
         btn_reference_path.grid(row=0, column=0, padx=5, pady=5, sticky="ew")
 
         # Save and Reset buttons
-
         self.create_settings_button(window.button_frame, "Save", lambda: self.save_settings(window, lbl_reference_path.cget('text')))
         self.create_settings_button(window.button_frame, "Reset", lambda: self.reset_action(window))
         self.create_settings_button(window.button_frame, "Generate Pattern File", lambda: self.generate_pattern_file(self.default_reference_path))
@@ -340,6 +340,8 @@ Save data:
 
         help_label = tk.Label(help_window, text=help_text, wraplength=400, justify="left", bg="black", fg="white", font=self.fonts['label'], relief='groove')
         help_label.pack(padx=10, pady=10)
+        help_window.transient(window)
+        help_window.grab_set()
 
         # Center the window on the screen
         help_window.update_idletasks()

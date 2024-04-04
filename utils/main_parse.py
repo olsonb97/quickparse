@@ -4,15 +4,13 @@ import logging
 import glob
 from .quickparser import Quickparser
 from .misc_classes import ParsingError
-import multiprocessing
-from multiprocessing import Pool
+from multiprocessing import cpu_count
 from concurrent.futures import ThreadPoolExecutor
 import re
 import time
 
 # Validate the reference folder is valid
 def validate_reference_folder(folder_path):
-    logging.debug('Validating Reference Folder')
     valid_pattern = any(file.endswith(".yaml") for file in os.listdir(folder_path))
     valid_logs = any(file.endswith((".log", ".txt")) for file in os.listdir(folder_path))
 
@@ -22,7 +20,7 @@ def validate_reference_folder(folder_path):
         if not valid_logs: missing.append("log files (.log, .txt)")
         return f"Reference Folder is not valid: missing {' and '.join(missing)}."
 
-# Get a list of file paths from a folder path
+# Get a set of file paths from a folder path
 def get_set_of_files(folder_path, exts: tuple):
     filepaths = set()
     for ext in exts:
@@ -49,7 +47,7 @@ def find_device_in_file(file_name, pattern, files_devices, discovered_devices, r
 def get_files_devices_dict(filepaths, pattern, reference=False):
     files_devices = {}
     discovered_devices = set()
-    with ThreadPoolExecutor(max_workers=multiprocessing.cpu_count() * 2) as executor:
+    with ThreadPoolExecutor(max_workers=cpu_count() * 2) as executor:
         futures = []
         for file_name in filepaths:
             futures.append(executor.submit(find_device_in_file, file_name, pattern, files_devices, discovered_devices, reference))
@@ -84,7 +82,7 @@ def parse_files(device_files, parsers, reference=False, collapse=False):
         elif not reference:
             return {"Device Not Found": {os.path.basename(file_path): "Device Not Found"}}
         
-    with ThreadPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
+    with ThreadPoolExecutor(max_workers=cpu_count()) as executor:
         futures = [executor.submit(process_file, fp, dev) for fp, dev in device_files.items()]
         for future in futures:
             result = future.result()
@@ -105,8 +103,7 @@ def compare_dict(ref_dict, targ_dict, filename, device):
     return device, basename, matches, mismatches, 'Matches', 'Deviations'
 
 def compare_dicts(ref_files_dict, targ_files_dict):
-    detail_dict = {"Reference Folder": ref_files_dict, "Scanned Folder": {"Matches": {}, "Deviations": {}, "Device Not Found": {}}}
-    
+    detail_dict = {"Reference Folder": ref_files_dict, "Scanned Folder": {"Matches": {}, "Deviations": {}, "Device Not Found": []}}
     for device, files in targ_files_dict.items():
         if device != "Device Not Found":
             for filename, targ_dict in files.items():
@@ -119,17 +116,15 @@ def compare_dicts(ref_files_dict, targ_files_dict):
                 detail_dict["Scanned Folder"][match_key][device][basename] = matches
                 detail_dict["Scanned Folder"][deviation_key][device][basename] = mismatches
         else:
-            detail_dict["Scanned Folder"]["Device Not Found"].update(files)
+            detail_dict["Scanned Folder"]["Device Not Found"] += files.keys()
 
     return detail_dict
 
 # Build the final dictionaries and strings
 def build_report(detail_dict, found_devices, scanned_files, counted_files, num_deviations, target_folder, reference_folder, files_without_devices, start_time):
-    detail_dict = Quickparser.collapse(detail_dict)
     errors = {
         "Files Where Device Not Found": files_without_devices
     }
-    errors = Quickparser.collapse(errors)
     brief_dict = {
         "Completion Date": datetime.now().strftime(r'%I:%M %p - %B %d, %Y').lstrip("0"),
         "Devices Found": found_devices,
@@ -137,23 +132,26 @@ def build_report(detail_dict, found_devices, scanned_files, counted_files, num_d
         "Folder (Reference)": reference_folder,
         "Folder (Scanned)": target_folder,
         "Total Deviations": num_deviations,
+        "Total Errors": sum(num for num in Quickparser.leafify(errors)),
         "Total Files Scanned": scanned_files,
         "Total Files Found": counted_files,
         "Total Time": f"{(time.perf_counter() - start_time):.3f} seconds",
         "Verdict": ("FAIL" if (num_deviations or errors or (scanned_files != counted_files)) else "PASS")
     }
     brief_dict = Quickparser.collapse(brief_dict)
-    detail_string = Quickparser.serialize(detail_dict, 'yaml')
+    detail_dict = Quickparser.collapse(detail_dict)
     brief_string = Quickparser.serialize(brief_dict, 'yaml')
+    detail_string = Quickparser.serialize(detail_dict, 'yaml')
     final_string = "\n" + "-" * 100 + "\n\nDetailed Report:\n\n" + detail_string + "\n" + ("-"* 100) + "\n\nBrief Report:\n\n" + brief_string + "\n" + ("-"* 100)
     return final_string
 
 # Main function for parsing
 def main_parse(reference_folder_path, target_folder_path, window):
-    logging.debug('Working...')
     start_time = time.perf_counter()
+    logging.debug('Working...')
 
     # Validate the reference folder and handle errors
+    logging.debug('Validating Reference Folder...')
     if error_message := validate_reference_folder(reference_folder_path):
         raise ParsingError(error_message)
 
@@ -166,7 +164,8 @@ def main_parse(reference_folder_path, target_folder_path, window):
     total_steps = 7
 
     # Find the pattern file
-    if not (pattern_file := glob.glob(os.path.join(reference_folder_path, "*.yaml"))[0]): # Cancel if pattern file is None
+    pattern_file, = get_set_of_files(reference_folder_path, ".yaml") # Cancel if pattern file is None
+    if not pattern_file:
         raise ParsingError(f"No pattern file found in Reference Folder: {reference_folder_path}")
     logging.debug(f'Discovered Pattern File: {os.path.basename(pattern_file)}')
     if not (pattern_dict := Quickparser.load(pattern_file, 'yaml')):
@@ -174,7 +173,7 @@ def main_parse(reference_folder_path, target_folder_path, window):
     devices_pattern = re.compile('|'.join(re.escape(device) for device in pattern_dict))
 
     # Create dictionaries in the form of filepath: device
-    logging.debug('Discovering')
+    logging.debug('Discovering...')
     reference_files_devices, ref_devices = get_files_devices_dict(reference_filepaths, devices_pattern, reference=True)
     logging.debug(f'Discovered devices from reference files: {", ".join(set(reference_files_devices.values()))}')
     update_progress_bar(window, 1, total_steps)
@@ -184,7 +183,9 @@ def main_parse(reference_folder_path, target_folder_path, window):
 
     # Create parsers for each device discovered in dictionaries of device: parser
     logging.debug('Creating parser objects...')
-    parsers = get_parser_objects(pattern_file, ref_devices)
+    total_devices = ref_devices.union(targ_devices)
+    total_devices.discard(None)
+    parsers = get_parser_objects(pattern_file, total_devices)
 
     # Create dictionaries in the form of {device: {filename: parsed_dict}}
     logging.debug('Parsing Reference Files...')
@@ -204,7 +205,7 @@ def main_parse(reference_folder_path, target_folder_path, window):
     final_dict = Quickparser.collapse(final_dict)
     update_progress_bar(window, 6, total_steps)
     targ_devices.discard(None)
-    devices = list(targ_devices)
+    found_devices = list(targ_devices)
     files_without_devices = len(final_dict.get("Scanned Folder", {}).get("Device Not Found", {}))
     counted_files = len(target_filepaths)
     scanned_files = sum(len(filenames) for filenames in parsed_target_dict.values())
@@ -212,7 +213,7 @@ def main_parse(reference_folder_path, target_folder_path, window):
 
     # Build the Brief Report
     logging.debug('Building Report...')
-    report = build_report(final_dict, devices, scanned_files, counted_files, num_deviations, target_folder_path, reference_folder_path, files_without_devices, start_time)
+    report = build_report(final_dict, found_devices, scanned_files, counted_files, num_deviations, target_folder_path, reference_folder_path, files_without_devices, start_time)
     update_progress_bar(window, 7, total_steps)
     logging.debug('Finished')
     print(report)
