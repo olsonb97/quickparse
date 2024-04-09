@@ -3,7 +3,7 @@ import yaml
 import json
 import logging
 from typing import IO, Optional, Literal
-from .misc_classes import QuickparserError
+from errors import QuickparserError
 
 class Quickparser:
     ext = '.yaml'

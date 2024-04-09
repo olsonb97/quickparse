@@ -255,7 +255,7 @@ class MainWindow(tk.Tk):
         if messagebox.askokcancel(title="Confirm", message=
                                             "Generating a new file is not recommended. Add to an existing one if possible. One folder may only contain one pattern file."):
             if save_path := self.open_dialog(dialog_type="save", initial_dir=path, initial_name="pattern_file.yaml", filetypes=[("YAML", "*.yaml")], default_ext=".yaml"):
-                base_dir = sys.path[0]  # Directory where the script is located
+                base_dir = sys.path[0]
                 source_pattern_file = os.path.join(base_dir, 'resources', 'pattern_file.yaml')
                 shutil.copy(source_pattern_file, save_path)
                 messagebox.showinfo(title="Success", message=f"Pattern file copied successfully to\n{save_path}")

@@ -3,7 +3,7 @@ from datetime import datetime
 import logging
 import glob
 from .quickparser import Quickparser
-from .misc_classes import ParsingError
+from .errors import ParsingError
 from multiprocessing import cpu_count
 from concurrent.futures import ThreadPoolExecutor
 import re
