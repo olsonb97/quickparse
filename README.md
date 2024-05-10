@@ -7,6 +7,7 @@ Quickparse is a parsing tool that provides graphical interfaces for analyzing de
 - **Dual Mode Parsing**: Enables parsing a single target folder or comparative analysis against a reference folder.
 - **In-app Template Editor**: Facilitates the direct editing of JSON/YAML templates within the application.
 - **Comprehensive Reporting**: Generates detailed reports that classify results based on parsing accuracy and identify discrepancies in comparative analyses.
+- **Quickparser Module**: Importable package designed to be usable with or without the GUI elements.
 
 ## Usage Instructions
 
