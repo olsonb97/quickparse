@@ -255,10 +255,18 @@ def main_parse(
     parse_function = (
         single_parse if reference_folder_path is None else comparison_parse
     )
-    return parse_function(
-        pattern_file=pattern_file,
-        target_folder_path=target_folder_path,
-        reference_folder_path=reference_folder_path,
-        window=window,
-        keyword=keyword
-    )
+    if reference_folder_path:
+        return parse_function(
+            pattern_file=pattern_file,
+            target_folder_path=target_folder_path,
+            reference_folder_path=reference_folder_path,
+            window=window,
+            keyword=keyword
+        )
+    else:
+        return parse_function(
+            pattern_file=pattern_file,
+            target_folder_path=target_folder_path,
+            window=window,
+            keyword=keyword
+        )
