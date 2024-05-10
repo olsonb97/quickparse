@@ -111,21 +111,23 @@ class TemplateEditor(tk.Toplevel):
 
     def load_example(self):
         if self.text_box.get("1.0", tk.END).strip():
-            if not self.confirm(
-                "Confirm", 
-                "This will erase everything in the text box. Continue?"
-            ):
+            if not self.confirm("Confirm", "This will erase everything in the text box. Continue?"):
                 return
-        base_dir = sys.path[0]
-        pattern_file_path = os.path.join(
-            base_dir, 
-            'resources', 
-            'pattern_file.yaml'
-        )
+
+        # if part of pyinstaller comp
+        if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+            resource_path = os.path.join(sys._MEIPASS)
+        else:
+            resource_path = os.path.join(os.getcwd(), 'resources')
+
+        # Construct the path to the resources folder and the pattern file
+        pattern_file_path = os.path.join(resource_path, 'pattern_file.yaml')
+
+        # Load the pattern file content into the text box
         with open(pattern_file_path, "r") as file:
-                template_content = file.read()
-                self.text_box.delete("1.0", "end")
-                self.text_box.insert("1.0", template_content)
+            template_content = file.read()
+            self.text_box.delete("1.0", "end")
+            self.text_box.insert("1.0", template_content)
 
     def load_template(self):
         if self.text_box.get("1.0", tk.END).strip():
@@ -135,8 +137,7 @@ class TemplateEditor(tk.Toplevel):
             ):
                 return
         file_path = filedialog.askopenfilename(
-            filetypes=[("YAML Files", "*.yaml"), 
-                       ("JSON Files", "*.json")]
+            filetypes=[("Template Files", "*.yaml;*.yml;*.json")]
         )
         if file_path:
             with open(file_path, "r") as file:
@@ -146,7 +147,7 @@ class TemplateEditor(tk.Toplevel):
 
     def save_yaml_template(self):
         file_path = filedialog.asksaveasfilename(
-            filetypes=[("YAML Files", "*.yaml")], 
+            filetypes=[("YAML Files", "*.yaml;*.yml")], 
             defaultextension=".yaml"
         )
         if file_path:

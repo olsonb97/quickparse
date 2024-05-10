@@ -209,7 +209,7 @@ class MainWindow(tk.Tk):
         text_redirector = TextRedirector(self.text_box)
         sys.stdout = text_redirector
         sys.stderr = text_redirector
-        # sys.tracebacklimit = 0
+        sys.tracebacklimit = 0
 
         # Set up logging to redirect to the text box
         logging_handler = logging.StreamHandler(text_redirector)
