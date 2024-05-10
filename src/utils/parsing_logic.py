@@ -2,7 +2,6 @@ import logging
 from src.utils.quickparser import Quickparser
 from src.utils.parsing_helpers import *
 import time
-from traceback import print_exc
 
 def single_parse(
     pattern_file,
@@ -241,7 +240,6 @@ def comparison_parse(
     
     except Exception as e:
         print(f'{type(e).__name__}: {str(e)}')
-        print_exc()
     finally:
         print('='*100)
 
