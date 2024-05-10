@@ -1,54 +1,84 @@
 # Quickparse
 
 ## Overview
-This lightweight tool parses log files against a reference to detect deviations. It utilizes simple, one-level deep YAML configurations for regex patterns, making it efficient and easy to customize. The tool outputs a detailed report, categorizing results as "PASS" or "FAIL".
+Quickparse is a parsing tool that provides graphical interfaces for analyzing device logs and text files. This tool allows users to customize parsing rules through JSON/YAML templates to handle various file formats and log structures efficiently. Quickparse leverages multi-threading as well as multi-processing for advanced Python speeds.
 
 ### Key Features
-- **Efficient Parsing**: Employs the `QuickParser` class for swift log analysis.
-- **Simplified Configuration**: Uses a straightforward YAML pattern file for defining variables and regex patterns.
-- **Comprehensive Reports**: Generates reports with detailed and brief sections, including a final "Verdict".
+- **Dual Mode Parsing**: Enables parsing a single target folder or comparative analysis against a reference folder.
+- **In-app Template Editor**: Facilitates the direct editing of JSON/YAML templates within the application.
+- **Comprehensive Reporting**: Generates detailed reports that classify results based on parsing accuracy and identify discrepancies in comparative analyses.
 
-### Quick Start
-- **Setup**: Clone the repo and ensure the reference folder has log files and a YAML pattern file.
-- **Run**: Execute the application, select your reference and target folder, and click "Parse".
+## Usage Instructions
 
-### Requirements
-- **Reference Folder**:
-    - At least one log file.
-    - One YAML pattern file.
+### Single-Target Parsing
+1. **Prepare Your Logs**: Place all log files you wish to parse in a single folder. Ensure they are in `.txt` or `.log` format.
+2. **Create a Pattern File**: Define the patterns for parsing using a JSON or YAML file. This file should specify the log entry components to be extracted, such as version, mac address, or any other relevant data. There is an example template in /resources for reference.
+3. **Load Resources**: Through the GUI, load your pattern file and target folder.
+4. **Begin Parsing**: Initiate the parsing process via the GUI. Quickparse will process the logs based on your pattern definitions and generate a report summarizing the results.'
+5. **Save Results**": The options to save the parsed information as txt, log, yaml, json, and xml are available.
 
-### YAML Patterns
-- Define device, OS, or other locator variables with minimal regex patterns.
-    - This key is used as a locator string for matching values to files.
-    - Values must be regex strings that will parse each file that matches
-    - Regex strings must have exactly one () group for simple parsing.
-    - String sequences parse in hierarchical order
+### Comparison Mode
+1. **Prepare Reference and Target Logs**: Organize your reference logs (the standard for comparison) and the target logs (to be analyzed) into two separate folders.
+2. **Create a Pattern File**: Similar to single-target parsing, create a JSON or YAML pattern file that defines the parsing rules.
+3. **Set Parsing Mode**: In the GUI, select the comparison mode option.
+4. **Load Resources**: Through the GUI, load your pattern file, target folder, and reference folder.
+5. **Begin Parsing**: Start the parsing process. Quickparse will first analyze the reference logs to establish a baseline, then parse the target logs and compare the findings, highlighting any deviations or matches.
+6. **Review the Report**: Analyze the generated report to see detailed comparisons, matches, and deviations between the target logs and the reference logs.
+7. **Save Results**": The options to save the parsed information as txt, log, yaml, json, and xml are available.
 
+## Pattern Files
+
+### Template Editor
+- **Access the Template Editor**: From the main interface, navigate to the template editor section.
+- **Create a Template**: The option to load an example template and begin editing with a starting point is available.
+- **Modify Existing Templates**: Open an existing template file and make changes as needed. The editor supports both JSON and YAML formats.
+- **Save Templates**: After editing, save the template file directly within the application for immediate use in parsing tasks.
+
+### Pattern File Configuration
+- Patterns are defined to efficiently match and parse specific entries in device logs.
+- Device names:
+  - These must occur within the log. Subsequent parsing relies on a device name match.
+  - Use "*" as a catch-all to avoid device matching.
+- Variables:
+  - Variable names are arbitrary. Their regex pattern must contain one "()" value to pull.
+  - Regex strings may be put into lists and they will parse hierarchically until found.
+
+### Example patterns:
+
+#### YAML Pattern Example
 ```yaml
-C9200L:
-    Version:
-    - 'Cisco IOS XE Software, Version (.*)'
-    - 'Cisco IOS XE Software Version (\S+)'
-    MAC Address: 'MAC Address\s+:\s+(\S+)'
-C9300:
-    Version: 'Cisco IOS XE Software, Version (.*)'
-    MAC Address: 'MAC Address\s+:\s+(\S+)'
-```
-
-OS keys are also compatible! The only requirement is that the key appear in the text:
-```yaml
+*:
+    Generic Version: 'Version (.*)'
 Cisco IOS XE:
     Version:
     - 'Cisco IOS XE Software, Version (.*)'
     - 'Cisco IOS XE Software Version (\S+)'
+    MAC Address: 'MAC Address\s+:\s+(\S+)'
 Arista EOS:
     Version: 'Arista EOS Version: (.*)'
 ```
+#### JSON Pattern Example
+```json
+{
+    "*": {
+        "Generic Version": "Version (.*)"
+    },
+    "Cisco IOS XE": {
+        "Version": [
+            "Cisco IOS XE Software, Version (.*)",
+            "Cisco IOS XE Software Version (\\S+)"
+        ],
+        "MAC Address": "MAC Address\\s+:\\s+(\\S+)"
+    },
+    "Arista EOS": {
+        "Version": "Arista EOS Version: (.*)"
+    }
+}
+```
 
-### Extensibility
-- **Format Flexibility**: Default pattern files are YAML for readability and ease of use, but JSON format is also supported for those who prefer it.
-- **Modular Parsing**: The QuickParser class is designed to function independently, allowing it to be imported and utilized in other Python projects.
-- **Expandable Patterns**: New regex patterns can be easily added to the YAML or JSON files, making the tool adaptable.
+## Extensibility
+- **Pattern Files**: Quickparse pattern files support a rigid structure, but allow for the choice of YAML or JSON.
+- **Modular Parsing**: The core parsing functionality, encapsulated in the `QuickParser` class, can be extended or integrated into other projects, allowing for broad application across various log parsing scenarios.
 
 ## License
-Licensed under GNU General Public License version 3 (GPLv3), ensuring free use and modification.
+This software is released under the GNU General Public License version 3 (GPLv3), permitting free use, modification, and distribution under the same license.

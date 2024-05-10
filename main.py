@@ -1,4 +1,4 @@
-from utils.gui import MainWindow
+from src.gui.main_window.main_window import MainWindow
 from tkinter import messagebox
 
 if __name__ == "__main__":

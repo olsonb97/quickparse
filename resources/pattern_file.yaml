@@ -1,30 +1,47 @@
-# Define devices (name must appear in the log) and variables:
-#
-# DeviceName:  # Use device name from logs
-#   variableName: 'regexPattern'  # Use one () group in regex
-#
-# For multiple regex patterns per variable:
-#   variableName:
-#     - 'pattern1'  # One () group
-#     - 'pattern2'  # One () group
+# Define keywords for parsing device information.
+# The text is searched for these keywords, and child values are parsed against matches.
+# A '*' keyword may be used as a catch-all for unspecified devices or those not matching any other keywords.
 
----
-C1100TGX:
-    Version: 'Cisco IOS XE Software, Version (.*)'
-C9200L:
-    Version: 
+# Within each keyword, specify values to search for using regex patterns:
+#     'arbitrary_name': 'regex pattern'
+
+# Each regex pattern must have one group of '()' to extract data.
+# Lists of patterns are valid and will parse hierarchically.
+# Patterns may nest as needed.
+
+# Example structure:
+# 'Device_Model':
+#     'Attribute1': 'regex pattern (value to pull)'
+#     'Attribute2':
+#         - 'regex pattern1 (value to pull)'
+#         - 'regex pattern2 (value to pull)'
+
+
+'C1100TGX':
+    'Version': 'Cisco IOS XE Software, Version (.*)'
+    'OS': 'Cisco (\S+\s+\S+)'
+'C9200L':
+    'Version': 
     - 'Cisco IOS XE Software, Version (.*)'
     - 'Cisco IOS XE Software Version (.*)'
-C93180:
-    Version: 'NXOS:\s+version (.*)'
-C9336:
-    Version: 'NXOS:\s+version (.*)'
-N8560:
-    Version: 'Software version\s+: (.*)'
-FS S3900:
-    Version: '(Version\s+\S+\s+Build\s+\d+)'
-S5850:
-    Version: 'S5850,\s+Version\s+(.*)'
-PA-3260:
-    Version: 'sw-version:\s+(.*)'
-...
+'C93180':
+    'Version': 'NXOS:\s+version (.*)'
+'C9336':
+    'Version': 'NXOS:\s+version (.*)'
+'N8560':
+    'Version': 'Software version\s+: (.*)'
+'FS S3900':
+    'Version': '(Version\s+\S+\s+Build\s+\d+)'
+'S5850':
+    'Version': 'S5850,\s+Version\s+(.*)'
+'PA-3260':
+    'Version': 'sw-version:\s+(.*)'
+'C9300':
+    'Version': 'Cisco IOS XE Software, Version (.*)'
+'Nexus 9k':
+    'Version': 'NXOS Version: (.*)'
+'*':
+    'Common':
+        'Version': 'Version (\S+)'
+    'Unique':
+        'MAC Address': 'MAC ADDRESS: (\S+)'
