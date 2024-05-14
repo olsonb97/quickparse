@@ -180,7 +180,7 @@ def compare_dicts(master_ref_dict, master_targ_dict, keyword):
                         ref_dict[keyword] = targ_keyword
 
                 if not 'matches' in locals() and not 'mismatches' in locals():
-                    raise ParsingError(f"No reference file found for target keyword: {targ_keyword}")
+                    raise ParsingError(f"No valid reference file found for target keyword: {targ_keyword}")
 
                 # Get basename
                 basename = os.path.basename(filename)

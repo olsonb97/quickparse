@@ -1,2 +1,2 @@
-'C9336':
+C9336
 NXOS: version 6
