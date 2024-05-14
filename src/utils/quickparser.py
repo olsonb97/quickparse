@@ -261,7 +261,7 @@ class Quickparser:
         '''
         try:
             ext = ext.lower().strip()
-            with open(file_path, 'r') as file:
+            with open(file_path, 'r', encoding='utf-8-sig') as file:
                 if ext in {'.yaml', 'yaml', '.yml', 'yml'}:
                     return yaml.safe_load(file)
                 elif ext in {'.json', 'json'}:

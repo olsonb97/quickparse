@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 import glob
-from .quickparser import Quickparser
+from src.utils.quickparser import Quickparser
 from multiprocessing import cpu_count
 from concurrent.futures import ThreadPoolExecutor
 import time
@@ -38,12 +38,13 @@ def __find_keyword_in_file(
         discovered_keywords,
         ref_bool
 ):
-    with open(file_name, 'r') as f:
+    with open(file_name, 'r', encoding='utf-8-sig') as f:
         keyword = Quickparser.discover(f.read(), possible_devs) # Find keyword
     if ref_bool and not keyword:
+        print(possible_devs)
         raise ParsingError( # Error if no keyword found in reference file
             f"No keyword found in reference file: {file_name}. "
-            "Validate keyword is in log and pattern file."
+            "Validate a keyword is in present in the text file and pattern file."
         )
     if ref_bool and (keyword in discovered_keywords): 
         raise ParsingError( # Error if duplicate reference keywords
@@ -87,7 +88,7 @@ def get_parser_objects(pattern_file, keywords):
 # Parse single file
 def parse_file(file_path, parser, collapse_bool, ref_bool, keyword):
     basename = os.path.basename(file_path)
-    with open(file_path) as f:
+    with open(file_path, 'r', encoding='utf-8-sig') as f:
         parsed_dict = parser.parse(f.read(), collapse_bool)
         if parsed_dict:
             if ref_bool: # Error if any ref values are NOT FOUND

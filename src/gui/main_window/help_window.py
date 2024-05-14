@@ -6,7 +6,7 @@ help_text = (
 "- Prepare Logs: Place all log files in a single folder (.txt or .log).\n"
 "- Create Pattern File: Create JSON or YAML templates to define patterns.\n"
 "- Load Resources: Load your pattern file and log folder through the GUI.\n"
-"- Begin Parsing: Initiate parsing  and review the generated report.\n"
+"- Begin Parsing: Initiate parsing and review the generated report.\n"
 "- Save Results: Save parsed data as txt, log, yaml, json, or xml.\n\n"
 "Comparison Mode:\n"
 "- Prepare Logs: Organize reference and target logs in separate folders.\n"

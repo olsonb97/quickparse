@@ -98,17 +98,17 @@ def save_action(mode, save_window, report_dict, report_string):
         **details[mode]
     ):
         if mode == "YAML":
-            with open(file_path, 'w') as file:
+            with open(file_path, 'w', encoding='utf-8') as file:
                 yaml.dump(
                     report_dict, file, default_flow_style=False, indent=4
                 )
         elif mode == "JSON":
-            with open(file_path, 'w') as file:
+            with open(file_path, 'w', encoding='utf-8') as file:
                 json.dump(
                     report_dict, file, indent=4
                 )
         elif mode == "XML":
-            with open(file_path, 'w') as file:
+            with open(file_path, 'w', encoding='utf-8') as file:
                 # Convert dictionary to XML
                 xml_obj = dicttoxml.dicttoxml(
                     report_dict, custom_root='Report', attr_type=False
@@ -119,7 +119,7 @@ def save_action(mode, save_window, report_dict, report_string):
                 pretty_xml = xml_str.toprettyxml()
                 file.write(pretty_xml)
         elif mode == "TEXT":
-            with open(file_path, 'w') as file:
+            with open(file_path, 'w', encoding='utf-8') as file:
                 file.write(report_string)
         save_window.destroy()
         messagebox.showinfo("Success", "File saved successfully.")

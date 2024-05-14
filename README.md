@@ -48,7 +48,7 @@ Quickparse is a parsing tool that provides graphical interfaces for analyzing de
 
 #### YAML Pattern Example
 ```yaml
-*:
+'*':
     Generic Version: 'Version (.*)'
 Cisco IOS XE:
     Version:

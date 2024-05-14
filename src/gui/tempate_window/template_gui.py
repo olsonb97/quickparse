@@ -124,7 +124,7 @@ class TemplateEditor(tk.Toplevel):
         pattern_file_path = os.path.join(resource_path, 'pattern_file.yaml')
 
         # Load the pattern file content into the text box
-        with open(pattern_file_path, "r") as file:
+        with open(pattern_file_path, "r", encoding='utf-8-sig') as file:
             template_content = file.read()
             self.text_box.delete("1.0", "end")
             self.text_box.insert("1.0", template_content)
@@ -140,7 +140,7 @@ class TemplateEditor(tk.Toplevel):
             filetypes=[("Template Files", "*.yaml;*.yml;*.json")]
         )
         if file_path:
-            with open(file_path, "r") as file:
+            with open(file_path, "r", encoding='utf-8-sig') as file:
                 template_content = file.read()
                 self.text_box.delete("1.0", "end")
                 self.text_box.insert("1.0", template_content)
@@ -160,7 +160,7 @@ class TemplateEditor(tk.Toplevel):
                     f"Invalid YAML: {e}"
                 )
             else:
-                with open(file_path, "w") as file:
+                with open(file_path, "w", encoding='utf-8') as file:
                     file.write(template_content)
                 messagebox.showinfo(
                     "Success", 
@@ -182,7 +182,7 @@ class TemplateEditor(tk.Toplevel):
                     f"Invalid JSON: {e}"
                 )
             else:
-                with open(file_path, "w") as file:
+                with open(file_path, "w", encoding='utf-8') as file:
                     file.write(template_content)
                 messagebox.showinfo(
                     "Success",

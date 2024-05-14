@@ -1,4 +1,4 @@
-﻿Switch#show version
+Switch#show version
 Cisco IOS XE Software, Version 17.03.05
 Cisco IOS Software [Amsterdam], Catalyst L3 Switch Software (CAT9K_LITE_IOSXE), Version 17.3.5, RELEASE SOFTWARE (fc2)
 Technical Support: http://www.cisco.com/techsupport
