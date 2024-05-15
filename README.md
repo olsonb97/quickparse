@@ -9,7 +9,8 @@ Quickparse is a parsing tool that provides graphical interfaces for analyzing de
 - **Comprehensive Reporting**: Generates detailed reports that classify results based on parsing accuracy and identify discrepancies in comparative analyses.
 - **Quickparser Module**: Importable package designed to be usable with or without the GUI elements.
 
-## Usage Instructions
+## GUI Usage Instructions
+Run main.pyw from the repository.
 
 ### Single-Target Parsing
 1. **Prepare Your Logs**: Place all log files you wish to parse in a single folder. Ensure they are in `.txt` or `.log` format.
@@ -26,6 +27,11 @@ Quickparse is a parsing tool that provides graphical interfaces for analyzing de
 5. **Begin Parsing**: Start the parsing process. Quickparse will first analyze the reference logs to establish a baseline, then parse the target logs and compare the findings, highlighting any deviations or matches.
 6. **Review the Report**: Analyze the generated report to see detailed comparisons, matches, and deviations between the target logs and the reference logs.
 7. **Save Results**": The options to save the parsed information as txt, log, yaml, json, and xml are available.
+
+## CLI Usage Instructions
+1. Run the command "pip install ." from the directory to install `quickparse` as a working command.
+2. Use command `quickparse /path/to/pattern_file /path/to/target_directory` to parse a pattern_file against a directory.
+3. For comparison mode, add the `-r /path/to/reference_directory` or `--reference /path/to/reference_directory`
 
 ## Pattern Files
 
