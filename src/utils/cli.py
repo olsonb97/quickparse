@@ -3,22 +3,7 @@ from argparse import RawDescriptionHelpFormatter
 import logging
 from src.utils.parsing_logic import main_parse
 
-logging_handler = logging.StreamHandler()
-logging_handler.setFormatter(
-    logging.Formatter(
-        '%(asctime)s.%(msecs)03d - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
-)
-logging.getLogger().addHandler(logging_handler)
-logging.getLogger().setLevel(logging.DEBUG)
-logger = logging.getLogger()
-logger.addHandler(logging_handler)
-
-def main():
-    parser = argparse.ArgumentParser(
-        formatter_class=RawDescriptionHelpFormatter,
-        description=r'''
+parser_description = r'''
 Quickparse
 
 Overview:
@@ -81,7 +66,26 @@ Extensibility:
 License:
 This software is released under the GNU General Public License version 3 (GPLv3), permitting free use, modification, and distribution.
 
-''')
+'''
+
+logging_handler = logging.StreamHandler()
+logging_handler.setFormatter(
+    logging.Formatter(
+        '%(asctime)s.%(msecs)03d - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+)
+logging.getLogger().addHandler(logging_handler)
+logging.getLogger().setLevel(logging.DEBUG)
+logger = logging.getLogger()
+logger.addHandler(logging_handler)
+
+def main():
+    parser = argparse.ArgumentParser(
+        formatter_class=RawDescriptionHelpFormatter,
+        description=parser_description
+    )
+    
     parser.add_argument(
         'pattern_file',
         help="Path to the pattern file. [.json, .yaml, .yml]"
