@@ -1,7 +1,22 @@
 import argparse
 from argparse import RawDescriptionHelpFormatter
 import logging
+import yaml
+import json
+import xml.dom.minidom
+import dicttoxml
 from src.utils.parsing_logic import main_parse
+
+def convert_to_format(report_dict, mode):
+    if mode == 'yaml':
+        return yaml.dump(report_dict, default_flow_style=False, indent=4)
+    elif mode == 'json':
+        return json.dumps(report_dict, indent=4)
+    elif mode == 'xml':
+        xml_obj = dicttoxml.dicttoxml(report_dict, custom_root='Report', attr_type=False)
+        xml_str = xml_obj.decode()
+        parsed_xml = xml.dom.minidom.parseString(xml_str)
+        return parsed_xml.toprettyxml()
 
 parser_description = r'''
 Quickparse
@@ -80,6 +95,8 @@ logging.getLogger().setLevel(logging.DEBUG)
 logger = logging.getLogger()
 logger.addHandler(logging_handler)
 
+dicttoxml.LOG.setLevel(logging.ERROR)
+
 def main():
     parser = argparse.ArgumentParser(
         formatter_class=RawDescriptionHelpFormatter,
@@ -88,32 +105,44 @@ def main():
     
     parser.add_argument(
         'pattern_file',
-        help="Path to the pattern file. [.json, .yaml, .yml]"
+        help="Path to the pattern file. {.json, .yaml, .yml}"
     )
     parser.add_argument(
-        'target_directory_path',
+        'target',
         help="Path to the target directory."
     )
     parser.add_argument(
-        '--reference_directory_path',
+        '--reference',
         '-r',
         help="Path to the reference directory (for comparison)."
     )
     parser.add_argument(
         '--keyword',
         '-k',
-        help="Keyword for parsing. Cosmetic change only. Adjusts semantics from 'Keyword' to provided argument.",
+        help="Keyword for parsing. Cosmetic change only. Adjusts semantics from 'Keyword' to provided argument, e.g., 'Device'.",
         default="Keyword"
+    )
+    parser.add_argument(
+        '--serialize',
+        '-s',
+        choices=['yaml', 'json', 'xml'],
+        help="Serialize the parsed data."
     )
     
     args = parser.parse_args()
 
-    main_parse(
+    report_dict, report_string = main_parse(
         pattern_file=args.pattern_file,
-        target_folder_path=args.target_directory_path,
-        reference_folder_path=args.reference_directory_path,
+        target_folder_path=args.target,
+        reference_folder_path=args.reference,
         keyword=args.keyword
     )
+
+    if args.serialize:
+        converted_report = convert_to_format(report_dict, args.serialize)
+        print(converted_report)
+    else:
+        print(report_string)
 
 if __name__ == "__main__":
     main()

@@ -1,0 +1,36 @@
+{
+  "C1100TGX": {
+      "Version": "Cisco IOS XE Software, Version (.*)",
+      "OS": "Cisco (\\S+\\s+\\S+)"
+  },
+  "C9200L": {
+      "Version": [
+          "Cisco IOS XE Software, Version (.*)",
+          "Cisco IOS XE Software Version (.*)"
+      ]
+  },
+  "C93180": {
+      "Version": "NXOS:\\s+version (.*)"
+  },
+  "C9336": {
+      "Version": "NXOS:\\s+version (.*)"
+  },
+  "N8560": {
+      "Version": "Software version\\s+: (.*)"
+  },
+  "FS S3900": {
+      "Version": "(Version\\s+\\S+\\s+Build\\s+\\d+)"
+  },
+  "S5850": {
+      "Version": "S5850,\\s+Version\\s+(.*)"
+  },
+  "PA-3260": {
+      "Version": "sw-version:\\s+(.*)"
+  },
+  "C9300": {
+      "Version": "Cisco IOS XE Software, Version (.*)"
+  },
+  "Nexus 9k": {
+      "Version": "NXOS Version: (.*)"
+  }
+}

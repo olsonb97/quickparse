@@ -109,14 +109,10 @@ def save_action(mode, save_window, report_dict, report_string):
                 )
         elif mode == "XML":
             with open(file_path, 'w', encoding='utf-8') as file:
-                # Convert dictionary to XML
-                xml_obj = dicttoxml.dicttoxml(
-                    report_dict, custom_root='Report', attr_type=False
-                )
-                # Convert bytes to a string
-                xml_str = xml.dom.minidom.parseString(xml_obj)
-                # Prettify
-                pretty_xml = xml_str.toprettyxml()
+                xml_obj = dicttoxml.dicttoxml(report_dict, custom_root='Report', attr_type=False)
+                xml_str = xml_obj.decode()
+                parsed_xml = xml.dom.minidom.parseString(xml_str)
+                pretty_xml = parsed_xml.toprettyxml()
                 file.write(pretty_xml)
         elif mode == "TEXT":
             with open(file_path, 'w', encoding='utf-8') as file:

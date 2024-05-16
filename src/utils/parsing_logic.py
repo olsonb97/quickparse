@@ -86,10 +86,9 @@ def single_parse(
     )
     update_progress_bar(5, total_steps, window)
     logging.debug('Finished')
-    print(report)
 
     # Return results
-    return parsed_target_dict
+    return parsed_target_dict, report
 
 def comparison_parse(
     pattern_file, 
@@ -226,10 +225,9 @@ def comparison_parse(
     )
     update_progress_bar(8, total_steps, window)
     logging.debug('Finished')
-    print(report)
 
     # Return results
-    return final_dict
+    return final_dict, report
 
 def main_parse(
     pattern_file,

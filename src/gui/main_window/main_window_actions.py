@@ -43,12 +43,13 @@ def parse_action(parent):
 
     # Threading function to prevent GUI freeze
     def thread_function(pattern_file, target_folder, reference_folder, window):
-        report_dict = main_parse(
+        report_dict, report_string = main_parse(
             pattern_file=pattern_file,
             target_folder_path=target_folder,
             reference_folder_path=reference_folder,
             window=window
         )
+        print(report_string)
         parent.report_dict = report_dict
 
     # Validate file and folder paths
