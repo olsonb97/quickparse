@@ -31,7 +31,8 @@ Run main.pyw from the repository.
 ## CLI Usage Instructions
 1. Run the command "pip install ." from the directory to install `quickparse` as a working command.
 2. Use command `quickparse /path/to/pattern_file /path/to/target_directory` to parse a pattern_file against a directory.
-3. For comparison mode, add the `-r /path/to/reference_directory` or `--reference /path/to/reference_directory`
+3. For comparison mode, add the option `-r /path/to/reference_directory` or `--reference /path/to/reference_directory`
+4. For serializing output, add the option `-s {xml/yaml/json}` or `--serialize {xml/yaml/json}`
 
 ## Pattern Files
 
