@@ -24,7 +24,7 @@ specific keyword is matched.\n\n"
 
 def show_help(parent):
     help_window = tk.Toplevel(parent, background="#262626")
-    help_window.withdraw()  # Hide the parent during configuration
+    help_window.withdraw()  # Hide during configuration
 
     # Set icon
     try:
@@ -52,19 +52,16 @@ def show_help(parent):
     )
     help_label.pack(padx=10, pady=10)
 
-    # Ensure all parent contents are drawn
     help_window.update_idletasks()
 
-    # Get the width and height of the parent
+    # Get the width and height
     width = help_window.winfo_reqwidth()
     height = help_window.winfo_reqheight()
 
-    # Get center position
+    # Position at center
     x = (parent.screen_width - width) // 2
     y = (parent.screen_height - height) // 2
-
-    # Position the parent at the center
     help_window.geometry(f"{width}x{height}+{x}+{y}")
 
-    # Make the parent visible
+    # Make visible
     help_window.deiconify()

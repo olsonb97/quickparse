@@ -59,7 +59,7 @@ class Quickparser:
                 break  # Stop if root logger found
             current_logger = current_logger.parent
 
-        # Only add a default handler if no handlers are found in the hierarchy
+        # Only add handler if none found in the hierarchy
         if not has_handlers:
             handler = logging.StreamHandler()
             formatter = logging.Formatter(

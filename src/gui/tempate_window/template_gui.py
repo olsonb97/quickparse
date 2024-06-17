@@ -120,7 +120,7 @@ class TemplateEditor(tk.Toplevel):
         else:
             resource_path = os.path.join(os.getcwd(), 'resources')
 
-        # Construct the path to the resources folder and the pattern file
+        # Construct the path to the pattern file
         pattern_file_path = os.path.join(resource_path, 'pattern_file.yaml')
 
         # Load the pattern file content into the text box

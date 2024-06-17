@@ -70,7 +70,7 @@ For logs without 'C9200L' anywhere in the text, the \
     except:
         pass
 
-    # Center the parent on the screen
+    # Center on the screen
     help_window.update_idletasks()
     screen_width = help_window.winfo_screenwidth()
     screen_height = help_window.winfo_screenheight()
